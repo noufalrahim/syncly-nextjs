@@ -7,17 +7,42 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!src/styles/*.css",
+      "!src/components/ui/*.tsx"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "indentWidth": 2
+    "indentWidth": 2,
+    "lineWidth": 100
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "style": {
+        "useConst": "error",
+        "noNonNullAssertion": "warn"
+      },
+      "correctness": {
+        "noUnusedImports": "error"
+      },
+      "suspicious": {
+        "noConsole": "info",
+        "noAlert": "error",
+        "noDoubleEquals": "error",
+        "noGlobalAssign": "error",
+        "noExplicitAny": "error",
+        "noEmptyBlock": "error",
+        "noArrayIndexKey": "off"
+      }
     },
     "domains": {
       "next": "recommended",
