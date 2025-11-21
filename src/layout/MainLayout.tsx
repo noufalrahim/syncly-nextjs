@@ -6,10 +6,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <main>
-          <SidebarTrigger />
-          {children}
-        </main>
+        <SidebarTrigger />
+        <main className="p-5">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

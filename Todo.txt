@@ -1,0 +1,1 @@
+1. Replace Tiptap in edit task section with custom light weight.
