@@ -35,10 +35,11 @@ interface ITaskSheetProps {
 export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) {
   const [date, setDate] = useState<Date | undefined>();
   const [attachments, setAttachments] = useState<File[]>([]);
-
   const [content, setContent] = useState(``);
-
-  const commentRef = useRef<HTMLDivElement | null>(null);
+  const [comment, setComment] = useState(``);
+  const [references, setReferences] = useState<{ title: string; url: string }[]>([]);
+  const [refTitle, setRefTitle] = useState("");
+  const [refUrl, setRefUrl] = useState("");
 
   const exec = (cmd: string, value?: string) => {
     document.execCommand(cmd, false, value);
@@ -49,7 +50,7 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
     if (url) exec("createLink", url);
   };
 
-  const insertCodeBlock = (ref: any) => {
+  const insertCodeBlock = () => {
     const selection = window.getSelection();
     if (!selection || !selection.rangeCount) return;
     const range = selection.getRangeAt(0);
@@ -72,65 +73,16 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
     setAttachments((prev) => prev.filter((f) => f !== file));
   };
 
-  const Toolbar = ({ targetRef }: any) => (
-    <div className="flex gap-2 border rounded-md p-1 w-max bg-muted/40 flex-wrap">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 font-bold"
-        onClick={() => exec("bold")}
-      >
-        B
-      </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7 italic" onClick={() => exec("italic")}>
-        I
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 underline"
-        onClick={() => exec("underline")}
-      >
-        U
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => exec("insertUnorderedList")}
-      >
-        •
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => exec("insertOrderedList")}
-      >
-        1
-      </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => insertHeading(1)}>
-        H1
-      </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => insertHeading(2)}>
-        H2
-      </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => insertHeading(3)}>
-        H3
-      </Button>
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={insertLink}>
-        <LinkIcon className="h-3 w-3" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => insertCodeBlock(targetRef)}
-      >
-        <Code className="h-3 w-3" />
-      </Button>
-    </div>
-  );
+  const addReference = () => {
+    if (!refUrl.trim()) return;
+    setReferences((prev) => [...prev, { title: refTitle || refUrl, url: refUrl }]);
+    setRefTitle("");
+    setRefUrl("");
+  };
+
+  const removeReference = (url: string) => {
+    setReferences((prev) => prev.filter((r) => r.url !== url));
+  };
 
   return (
     <Sheet open={openSheet} onOpenChange={onOpenChange}>
@@ -151,7 +103,6 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
 
           <div className="space-y-3">
             <Label>Description</Label>
-
             <MinimalTiptap
               content={content}
               onChange={setContent}
@@ -163,11 +114,11 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
             <div className="space-y-2">
               <Label>Assignee</Label>
               <Select>
-                <SelectTrigger className="border-none shadow-none p-0 !focus:ring-0 !focus:border-0 !border-0 !ring-0">
+                <SelectTrigger className="border-none shadow-none p-0 !focus:ring-0 !focus:border-0">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="noufalrhaim">
+                  <SelectItem value="noufalrahim">
                     <div className="items-center justify-start flex flex-row gap-2">
                       <Avatar>
                         <AvatarFallback className="bg-gray-700 text-white">NR</AvatarFallback>
@@ -201,6 +152,7 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <div className="flex flex-row items-center justify-start gap-1">
                 <Label>Dependency</Label>
@@ -221,10 +173,10 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
                   <SelectValue placeholder="Select a task to add dependency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">1-EA09</SelectItem>
-                  <SelectItem value="medium">1-EV29</SelectItem>
-                  <SelectItem value="high">1-ED89</SelectItem>
-                  <SelectItem value="critical">1-EL09</SelectItem>
+                  <SelectItem value="a">1-EA09</SelectItem>
+                  <SelectItem value="b">1-EV29</SelectItem>
+                  <SelectItem value="c">1-ED89</SelectItem>
+                  <SelectItem value="d">1-EL09</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -284,11 +236,53 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
           </div>
 
           <div className="space-y-3">
+            <Label>References</Label>
+
+            <div className="flex gap-2">
+              <Input
+                value={refTitle}
+                onChange={(e) => setRefTitle(e.target.value)}
+                placeholder="Title (optional)"
+              />
+              <Input
+                value={refUrl}
+                onChange={(e) => setRefUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+              <Button onClick={addReference}>
+                <LinkIcon size={16} className="mr-1" /> Add
+              </Button>
+            </div>
+
+            {references.length > 0 && (
+              <div className="space-y-2 border rounded-md p-3">
+                {references.map((ref, i) => (
+                  <div key={i} className="flex justify-between items-center">
+                    <a
+                      href={ref.url}
+                      target="_blank"
+                      className="flex items-center gap-2 text-sm underline"
+                    >
+                      <img
+                        src={`https://www.google.com/s2/favicons?sz=32&domain_url=${ref.url}`}
+                        className="h-4 w-4 rounded"
+                      />
+                      <span>{ref.title}</span>
+                    </a>
+                    <Button variant="ghost" size="sm" onClick={() => removeReference(ref.url)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
             <Label>Comments</Label>
-            {/* <Toolbar targetRef={commentRef} /> */}
             <MinimalTiptap
-              content={content}
-              onChange={setContent}
+              content={comment}
+              onChange={setComment}
               placeholder="Start typing your content here..."
             />
             <Button size="sm" className="mt-1">
