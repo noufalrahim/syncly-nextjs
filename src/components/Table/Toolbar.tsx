@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { priorityFieldsGenerator } from "@/lib/priorityFieldsGenerator";
+import { priorityFieldsGenerator } from "@/lib/utils";
 import { EPriority } from "@/types";
 
 export default function Toolbar() {

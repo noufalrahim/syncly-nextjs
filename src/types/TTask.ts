@@ -1,9 +1,11 @@
+import { TColumn } from "./TColumn";
+
 export type TTask = {
-  _id: string;
+  id: string;
   title: string;
   description?: string;
-  columnRef: string;
-  projectRef: string;
+  columnRef?: TColumn;
+  projectRef?: string;
   priority?: string;
   dueDate?: string;
   // assignee?: string;

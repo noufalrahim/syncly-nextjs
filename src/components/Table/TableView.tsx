@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useReadData } from "@/hooks/useReadData";
-import { priorityFieldsGenerator } from "@/lib/priorityFieldsGenerator";
+import { priorityFieldsGenerator } from "@/lib/utils";
 import type { ProjectType, TColumn, TTask } from "@/types";
 import { BadgeComponent } from "../BadgeComponent";
 import { Toolbar } from ".";
@@ -58,7 +58,7 @@ export default function TableView({ projectId }: TableView) {
             {tasksData &&
               tasksData.length > 0 &&
               tasksData.map((record) => (
-                <TableRow key={record.task._id!} className="cursor-pointer hover:bg-muted/50">
+                <TableRow key={record.task.id!} className="cursor-pointer hover:bg-muted/50">
                   <TableCell className="font-medium">{record.task.title}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
