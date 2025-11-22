@@ -90,7 +90,7 @@ const exampleMarkers = Array.from({ length: 6 })
       'bg-teal-100 text-teal-900',
     ]),
   }));
-export default function Grantt() {
+export default function Gantt() {
   const [features, setFeatures] = useState(exampleFeatures);
   const groupedFeatures = groupBy(features, 'group.name');
   const sortedGroupedFeatures = Object.fromEntries(
