@@ -23,7 +23,7 @@ const appItems = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Search", url: "#", icon: Search },
   { title: "Settings", url: "#", icon: Settings },
-  { title: "Kanban", url: "/kanban", icon: LayoutTemplate },
+  { title: "Kanban", url: "/board", icon: LayoutTemplate },
   { title: "Gantt", url: "/gantt", icon: ChartGantt },
 ];
 const projects = [
