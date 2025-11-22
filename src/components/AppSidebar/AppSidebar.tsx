@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Home, Inbox, Plus, Search, Settings } from "lucide-react";
+import { Calendar, ChartGantt, Home, Inbox, LayoutTemplate, Plus, Search, Settings } from "lucide-react";
 
 import {
   Sidebar,
@@ -20,11 +20,12 @@ import { ExtSidebarItem, SidebarFooter, SidebarHeader } from "./_components";
 const appItems = [
   { title: "Home", url: "#", icon: Home },
   { title: "Inbox", url: "#", icon: Inbox },
-  { title: "Calendar", url: "#", icon: Calendar },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Search", url: "#", icon: Search },
   { title: "Settings", url: "#", icon: Settings },
+  { title: "Kanban", url: "/kanban", icon: LayoutTemplate },
+  { title: "Gantt", url: "/gantt", icon: ChartGantt },
 ];
-
 const projects = [
   {
     title: "Project Alpha",
