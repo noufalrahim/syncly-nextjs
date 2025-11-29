@@ -117,6 +117,7 @@ export class TaskRepository implements ITaskRepository {
     return columns;
   }
   async update(id: string, data: Partial<Task>): Promise<Task | null> {
+    console.log(id, data);
     return await TaskModel.findByIdAndUpdate(id, data, { new: true });
   }
 

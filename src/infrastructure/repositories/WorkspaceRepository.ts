@@ -16,7 +16,7 @@ const workspaceSchema = new Schema(
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
-const WorkspaceModel = models.WorkspaceModel || model("Workspace", workspaceSchema);
+const WorkspaceModel = models.Workspace || model("Workspace", workspaceSchema);
 
 export class WorkspaceRepository implements IWorkspaceRepository {
   async create(workspace: Workspace): Promise<Workspace> {

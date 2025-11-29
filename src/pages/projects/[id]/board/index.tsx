@@ -15,79 +15,97 @@ import { useReadData } from "@/hooks/useReadData";
 import { MainLayout } from "@/layout";
 import { ProtectedRoute } from "@/routes";
 import type { TColumn, TTask } from "@/types";
+import { useModifyData } from "@/hooks/useModifyData";
+import { TaskSkeleton } from "@/components/Skeletons";
 
 export default function Board() {
-  const [open, setOpen] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
   const router = useRouter();
-  const [isClicked, setIsClicked] = useState<boolean>(false);
+  const [isClicked, setIsClicked] = useState(false);
   const inputRef = useRef<HTMLDivElement | null>(null);
-  const [newColumnName, setNewColumnName] = useState<string>("");
+  const [newColumnName, setNewColumnName] = useState("");
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
-
+  const [localColumns, setLocalColumns] = useState<Record<string, TColumn>>({});
 
   const { mutate: createColumn, isPending: createColumnIsPending } = useCreateData<
-    {
-      name: string;
-      project: string;
-    },
-    {
-      data: TColumn;
-      message: string;
-      success: boolean;
-    }
+    { name: string; project: string },
+    { data: TColumn; message: string; success: boolean }
   >("/status-columns");
 
   const {
     data: tasksResponse,
     isPending: taskResponsePending,
     refetch: refetchTasks,
-  } = useReadData<{
-    data: Record<string, TColumn>;
-    message: string;
-    success: boolean;
-  }>("tasks-by-project", `/tasks?projectId=${router.query.id}&groupByColumn=true&type=project-id`);
-
-  const { mutate: deleteColumn, isPending: deleteColumnIsPending } = useDeleteData<{
-    success: boolean;
-    data: null;
-    message: string;
-  }>("/status-columns");
-
-  const { mutate: deleteTask, isPending: deleteTaskIsPending } = useDeleteData<{
-    success: boolean;
-    data: null;
-    message: string;
-  }>("/tasks");
-
-  const columns = useMemo<Record<string, TColumn>>(
-    () => tasksResponse?.data ?? {},
-    [tasksResponse],
+  } = useReadData<{ data: Record<string, TColumn>; message: string; success: boolean }>(
+    "tasks-by-project",
+    `/tasks?projectId=${router.query.id}&groupByColumn=true&type=project-id`
   );
 
+  const { mutate: modifyTasks, isPending: modifyTasksPending } = useModifyData<
+    {
+      _id: string;
+      column: string;
+    },
+    {
+      success: boolean;
+      message: string;
+    }
+  >("/tasks");
+
+  const { mutate: deleteColumn } = useDeleteData<
+    {
+      success: boolean;
+      message: string;
+    }
+  >("/status-columns");
+
+  const { mutate: deleteTask } = useDeleteData<
+    {
+      success: boolean;
+      message: string;
+    }
+  >("/tasks");
+
+  useEffect(() => {
+    if (tasksResponse?.data) {
+      setLocalColumns(tasksResponse.data);
+    }
+  }, [tasksResponse]);
+
   const onDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
+    const { source, destination, draggableId } = result;
+
     if (!destination) return;
 
     const sourceColId = source.droppableId;
     const destColId = destination.droppableId;
 
-    const sourceCol = columns[sourceColId];
-    const destCol = columns[destColId];
-    if (!sourceCol || !destCol) return;
+    if (sourceColId === destColId) return;
 
-    const sourceTasks = [...(sourceCol.tasks || [])];
-    const destTasks = [...(destCol.tasks || [])];
-
-    const [moved] = sourceTasks.splice(source.index, 1);
-
-    if (sourceColId === destColId) {
-      sourceTasks.splice(destination.index, 0, moved);
-      columns[sourceColId].tasks = sourceTasks;
-    } else {
-      destTasks.splice(destination.index, 0, moved);
-      columns[sourceColId].tasks = sourceTasks;
-      columns[destColId].tasks = destTasks;
-    }
+    modifyTasks(
+      {
+        identifier: {
+          key: "_id",
+          value: draggableId
+        },
+        updates: {
+          column: destColId
+        }
+      },
+      {
+        onSuccess: (res) => {
+          if (res?.success) {
+            toast.success("Task moved successfully", { position: "top-right" });
+            refetchTasks();
+          } else {
+            toast.error("Failed to move task", { position: "top-right" });
+          }
+        },
+        onError: () => {
+          toast.error("Failed to move task", { position: "top-right" });
+        }
+      }
+    );
   };
 
   useEffect(() => {
@@ -104,25 +122,17 @@ export default function Board() {
   const handleAddColumn = () => {
     if (!newColumnName.trim()) return;
     createColumn(
-      {
-        name: newColumnName.trim(),
-        project: router.query.id as string,
-      },
+      { name: newColumnName.trim(), project: router.query.id as string },
       {
         onSuccess: (res) => {
-          if (res && res.success && res.data) {
+          if (res.success) {
             toast.success("Column added successfully", { position: "top-right" });
             setIsClicked(false);
             setNewColumnName("");
             refetchTasks();
-          } else {
-            toast.error("An error occured while adding column", { position: "top-right" });
           }
         },
-        onError: () => {
-          toast.error("An error occured while adding column", { position: "top-right" });
-        },
-      },
+      }
     );
   };
 
@@ -136,59 +146,46 @@ export default function Board() {
 
   const handleDelete = (column: TColumn) => {
     deleteColumn(
-      {
-        id: column.id!,
-      },
+      { id: column.id! },
       {
         onSuccess: (res) => {
-          if (res && res.success) {
-            toast.success("Column deleted successfully", { position: "top-right" });
+          if (res.success) {
+            toast.success("Column deleted", { position: "top-right" });
             refetchTasks();
-          } else {
-            toast.error("An error occured while deleting column", { position: "top-right" });
           }
         },
-        onError: () => {
-          toast.error("An error occured while deleting column", { position: "top-right" });
-        },
-      },
+      }
     );
   };
 
-const handleDeleteTask = (task: TTask) => {
-  setDeletingTaskId(task.id!);
+  const handleDeleteTask = (task: TTask) => {
+    setDeletingTaskId(task.id!);
+    deleteTask(
+      { id: task.id! },
+      {
+        onSuccess: (res) => {
+          setDeletingTaskId(null);
+          if (res.success) {
+            toast.success("Task deleted", { position: "top-right" });
+            refetchTasks();
+          }
+        },
+        onError: () => {
+          setDeletingTaskId(null);
+          toast.error("Error deleting task", { position: "top-right" });
+        },
+      }
+    );
+  };
 
-  deleteTask(
-    { id: task.id! },
-    {
-      onSuccess: (res) => {
-        setDeletingTaskId(null);
-        if (res && res.success) {
-          toast.success("Task deleted successfully", { position: "top-right" });
-          refetchTasks();
-        } else {
-          toast.error("An error occured while deleting task", { position: "top-right" });
-        }
-      },
-      onError: () => {
-        setDeletingTaskId(null);
-        toast.error("An error occured while deleting task", { position: "top-right" });
-      },
-    },
-  );
-};
-
-
-  if (createColumnIsPending || taskResponsePending) {
-    return <Loader />;
-  }
+  if (createColumnIsPending || taskResponsePending) return <Loader />;
 
   return (
     <ProtectedRoute>
       <MainLayout>
         <div className="flex h-full overflow-x-auto overflow-y-hidden no-scrollbar p-5 gap-5">
           <DragDropContext onDragEnd={onDragEnd}>
-            {Object.values(columns).map((col) => (
+            {Object.values(localColumns).map((col) => (
               <Droppable key={col.id} droppableId={col.id!}>
                 {(provided) => (
                   <div
@@ -199,10 +196,7 @@ const handleDeleteTask = (task: TTask) => {
                     <div className="flex items-center justify-between px-1 pb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm">{col.name}</span>
-                        <Badge
-                          variant="secondary"
-                          className="bg-gray-300 rounded-full w-5 h-5 flex items-center justify-center"
-                        >
+                        <Badge className="bg-gray-300 rounded-full w-5 h-5 flex items-center justify-center">
                           {col?.tasks?.length ?? 0}
                         </Badge>
                       </div>
@@ -212,33 +206,37 @@ const handleDeleteTask = (task: TTask) => {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                      {col?.tasks?.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                              }}
-                            >
-                              <TaskCard
-                                task={task}
-                                setOpen={() => setOpen(true)}
-                                onDeleteTask={handleDeleteTask}
-                                isPending={deletingTaskId === task.id}
-                                column={col}
-                              />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      <AddTask
-                        projectId={router.query.id as string}
-                        columnId={col.id as string}
-                        refetch={refetchTasks}
-                      />
+                      {modifyTasksPending ? (
+                        <TaskSkeleton />
+                      ) : (
+                        col?.tasks?.map((task, index) => (
+                          <Draggable key={task.id} draggableId={task.id!} index={index}>
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                              >
+                                <TaskCard
+                                  task={task}
+                                  setOpen={() => setOpen(true)}
+                                  onDeleteTask={handleDeleteTask}
+                                  isPending={deletingTaskId === task.id}
+                                  column={col}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))
+                      )}
+
+                      {!modifyTasksPending && (
+                        <AddTask
+                          projectId={router.query.id as string}
+                          columnId={col.id as string}
+                          refetch={refetchTasks}
+                        />
+                      )}
                     </div>
 
                     {provided.placeholder}
@@ -249,32 +247,30 @@ const handleDeleteTask = (task: TTask) => {
 
             {!isClicked ? (
               <div
-                className="bg-gray-100 hover:bg-gray-200 transition p-5 w-[20rem] rounded-xl cursor-pointer flex items-start gap-2 max-h-16 overflow-hidden"
+                className="bg-gray-100 hover:bg-gray-200 transition p-5 w-[20rem] rounded-xl cursor-pointer flex items-start gap-2 max-h-16"
                 onClick={() => setIsClicked(true)}
               >
                 <PlusIcon size={16} />
                 <span className="font-medium text-sm">Add Column</span>
               </div>
             ) : (
-              <div
-                ref={inputRef}
-                className="bg-gray-100 p-3 w-[20rem] rounded-xl flex flex-row gap-3 max-h-16"
-              >
+              <div ref={inputRef} className="bg-gray-100 p-3 w-[20rem] rounded-xl flex gap-3 max-h-16">
                 <Input
-                  className="h-10 border-0 border-b border-gray-300 rounded-none shadow-none focus:border-b focus:border-black focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none active:outline-none active:ring-0"
+                  className="h-10 border-0 border-b border-gray-300 rounded-none shadow-none"
                   value={newColumnName}
                   onChange={(e) => setNewColumnName(e.target.value)}
                   onKeyDown={handleKeyDown}
                   autoFocus
                   placeholder="Column Name..."
                 />
-                <Button variant={"secondary"} className="shadow-none" onClick={handleAddColumn}>
+                <Button variant="secondary" onClick={handleAddColumn}>
                   Add
                 </Button>
               </div>
             )}
           </DragDropContext>
         </div>
+
         <TaskSheet openSheet={open} onOpenChange={setOpen} />
       </MainLayout>
     </ProtectedRoute>

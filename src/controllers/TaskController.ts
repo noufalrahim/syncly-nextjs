@@ -47,11 +47,17 @@ export class TaskController {
     }
   }
 
-  async updateTask(id: string, data: Partial<Task>) {
+  async updateTask(data: {
+    identifier: {
+      key: string;
+      value: string;
+    };
+    updates: Partial<Task>;
+  }) {
     try {
       await connectDB();
       const repo = new TaskRepository();
-      const result = await repo.update(id, data);
+      const result = await repo.update(data.identifier.value, data.updates);
       return { success: true, data: result, message: "Task updated successfully" };
     } catch (error: any) {
       return { success: false, data: null, message: error.message || "Failed to update Task" };

@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(201).json(result);
   }
 
-  if (method === "PUT") {
+  if (method === "PATCH") {
     const result = await controller.updateLabel(req.query.id as string, req.body);
     return res.status(200).json(result);
   }

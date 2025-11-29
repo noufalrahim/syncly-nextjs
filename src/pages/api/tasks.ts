@@ -31,8 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(201).json(result);
   }
 
-  if (method === "PUT") {
-    const result = await controller.updateTask(req.query.id as string, req.body);
+  if (method === "PATCH") {
+    const result = await controller.updateTask(req.body);
     return res.status(200).json(result);
   }
 
