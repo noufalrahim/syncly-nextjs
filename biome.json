@@ -32,7 +32,8 @@
         "noNonNullAssertion": "warn"
       },
       "correctness": {
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "noUnsafeOptionalChaining": "error"
       },
       "suspicious": {
         "noConsole": "info",

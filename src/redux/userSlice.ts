@@ -1,11 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { TUser } from "@/types";
 
-export interface UserState {
+export interface IUserState {
   entity: TUser | null;
 }
 
-const initialState: UserState = {
+const initialState: IUserState = {
   entity: null,
 };
 

@@ -1,1 +1,1 @@
-export { default as Kanban } from "./Kanban";
+export * from "./_components";

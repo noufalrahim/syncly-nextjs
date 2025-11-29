@@ -1,6 +1,7 @@
-export type ProjectType = {
-  _id: string;
+export type TProject = {
+  id?: string;
   name: string;
-  organisationRef: string;
+  workspace: string;
   emoji: string;
+  createdBy: string;
 };

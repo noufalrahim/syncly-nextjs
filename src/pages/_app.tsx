@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/providers/QueryProvider";
 import { store } from "@/redux/store";
 import "@/styles/globals.css";
@@ -8,6 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <QueryProvider>
       <Provider store={store}>
+        <Toaster />
         <Component {...pageProps} />
       </Provider>
     </QueryProvider>

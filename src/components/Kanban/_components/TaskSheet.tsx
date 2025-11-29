@@ -1,7 +1,8 @@
 "use client";
 
-import { Code, InfoIcon, Link as LinkIcon, Paperclip, Type } from "lucide-react";
-import { useRef, useState } from "react";
+import { InfoIcon, Link as LinkIcon, Paperclip } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -40,29 +41,6 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
   const [references, setReferences] = useState<{ title: string; url: string }[]>([]);
   const [refTitle, setRefTitle] = useState("");
   const [refUrl, setRefUrl] = useState("");
-
-  const exec = (cmd: string, value?: string) => {
-    document.execCommand(cmd, false, value);
-  };
-
-  const insertLink = () => {
-    const url = prompt("Enter URL");
-    if (url) exec("createLink", url);
-  };
-
-  const insertCodeBlock = () => {
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return;
-    const range = selection.getRangeAt(0);
-    const code = document.createElement("pre");
-    code.className = "bg-muted p-3 rounded-md";
-    code.textContent = "code...";
-    range.insertNode(code);
-  };
-
-  const insertHeading = (level: number) => {
-    exec("formatBlock", `h${level}`);
-  };
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;
@@ -263,9 +241,10 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
                       target="_blank"
                       className="flex items-center gap-2 text-sm underline"
                     >
-                      <img
+                      <Image
                         src={`https://www.google.com/s2/favicons?sz=32&domain_url=${ref.url}`}
                         className="h-4 w-4 rounded"
+                        alt=""
                       />
                       <span>{ref.title}</span>
                     </a>

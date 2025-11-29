@@ -1,4 +1,14 @@
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
+import groupBy from "lodash.groupby";
+import { EyeIcon, LinkIcon, TrashIcon } from "lucide-react";
+import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
   GanttCreateMarkerTrigger,
   GanttFeatureItem,
@@ -12,23 +22,14 @@ import {
   GanttSidebarItem,
   GanttTimeline,
   GanttToday,
-} from '@/components/ui/shadcn-io/gantt';
-import groupBy from 'lodash.groupby';
-import { EyeIcon, LinkIcon, TrashIcon } from 'lucide-react';
-import { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import { MainLayout } from '@/layout';
+} from "@/components/ui/shadcn-io/gantt";
+import { MainLayout } from "@/layout";
+
 const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 const statuses = [
-  { id: faker.string.uuid(), name: 'Planned', color: '#6B7280' },
-  { id: faker.string.uuid(), name: 'In Progress', color: '#F59E0B' },
-  { id: faker.string.uuid(), name: 'Done', color: '#10B981' },
+  { id: faker.string.uuid(), name: "Planned", color: "#6B7280" },
+  { id: faker.string.uuid(), name: "In Progress", color: "#F59E0B" },
+  { id: faker.string.uuid(), name: "Done", color: "#10B981" },
 ];
 const users = Array.from({ length: 4 })
   .fill(null)
@@ -82,52 +83,39 @@ const exampleMarkers = Array.from({ length: 6 })
     date: faker.date.past({ years: 0.5, refDate: new Date() }),
     label: capitalize(faker.company.buzzPhrase()),
     className: faker.helpers.arrayElement([
-      'bg-blue-100 text-blue-900',
-      'bg-green-100 text-green-900',
-      'bg-purple-100 text-purple-900',
-      'bg-red-100 text-red-900',
-      'bg-orange-100 text-orange-900',
-      'bg-teal-100 text-teal-900',
+      "bg-blue-100 text-blue-900",
+      "bg-green-100 text-green-900",
+      "bg-purple-100 text-purple-900",
+      "bg-red-100 text-red-900",
+      "bg-orange-100 text-orange-900",
+      "bg-teal-100 text-teal-900",
     ]),
   }));
 export default function Gantt() {
   const [features, setFeatures] = useState(exampleFeatures);
-  const groupedFeatures = groupBy(features, 'group.name');
+  const groupedFeatures = groupBy(features, "group.name");
   const sortedGroupedFeatures = Object.fromEntries(
-    Object.entries(groupedFeatures).sort(([nameA], [nameB]) =>
-      nameA.localeCompare(nameB)
-    )
+    Object.entries(groupedFeatures).sort(([nameA], [nameB]) => nameA.localeCompare(nameB)),
   );
-  const handleViewFeature = (id: string) =>
-    console.log(`Feature selected: ${id}`);
+  const handleViewFeature = (id: string) => console.log(`Feature selected: ${id}`);
   const handleCopyLink = (id: string) => console.log(`Copy link: ${id}`);
   const handleRemoveFeature = (id: string) =>
     setFeatures((prev) => prev.filter((feature) => feature.id !== id));
-  const handleRemoveMarker = (id: string) =>
-    console.log(`Remove marker: ${id}`);
-  const handleCreateMarker = (date: Date) =>
-    console.log(`Create marker: ${date.toISOString()}`);
+  const handleRemoveMarker = (id: string) => console.log(`Remove marker: ${id}`);
+  const handleCreateMarker = (date: Date) => console.log(`Create marker: ${date.toISOString()}`);
   const handleMoveFeature = (id: string, startAt: Date, endAt: Date | null) => {
     if (!endAt) {
       return;
     }
     setFeatures((prev) =>
-      prev.map((feature) =>
-        feature.id === id ? { ...feature, startAt, endAt } : feature
-      )
+      prev.map((feature) => (feature.id === id ? { ...feature, startAt, endAt } : feature)),
     );
     console.log(`Move feature: ${id} from ${startAt} to ${endAt}`);
   };
-  const handleAddFeature = (date: Date) =>
-    console.log(`Add feature: ${date.toISOString()}`);
+  const handleAddFeature = (date: Date) => console.log(`Add feature: ${date.toISOString()}`);
   return (
     <MainLayout>
-      <GanttProvider
-        className="border"
-        onAddItem={handleAddFeature}
-        range="monthly"
-        zoom={100}
-      >
+      <GanttProvider className="border" onAddItem={handleAddFeature} range="monthly" zoom={100}>
         <GanttSidebar>
           {Object.entries(sortedGroupedFeatures).map(([group, features]) => (
             <GanttSidebarGroup key={group} name={group}>
@@ -150,23 +138,13 @@ export default function Gantt() {
                   <div className="flex" key={feature.id}>
                     <ContextMenu>
                       <ContextMenuTrigger asChild>
-                        <button
-                          onClick={() => handleViewFeature(feature.id)}
-                          type="button"
-                        >
-                          <GanttFeatureItem
-                            onMove={handleMoveFeature}
-                            {...feature}
-                          >
-                            <span className="flex-1 truncate text-xs">
-                              {feature.name}
-                            </span>
+                        <button onClick={() => handleViewFeature(feature.id)} type="button">
+                          <GanttFeatureItem onMove={handleMoveFeature} {...feature}>
+                            <span className="flex-1 truncate text-xs">{feature.name}</span>
                             {feature.owner && (
                               <Avatar className="h-4 w-4">
                                 <AvatarImage src={feature.owner.image} />
-                                <AvatarFallback>
-                                  {feature.owner.name?.slice(0, 2)}
-                                </AvatarFallback>
+                                <AvatarFallback>{feature.owner.name?.slice(0, 2)}</AvatarFallback>
                               </Avatar>
                             )}
                           </GanttFeatureItem>
@@ -202,11 +180,7 @@ export default function Gantt() {
             ))}
           </GanttFeatureList>
           {exampleMarkers.map((marker) => (
-            <GanttMarker
-              key={marker.id}
-              {...marker}
-              onRemove={handleRemoveMarker}
-            />
+            <GanttMarker key={marker.id} {...marker} onRemove={handleRemoveMarker} />
           ))}
           <GanttToday />
           <GanttCreateMarkerTrigger onCreateMarker={handleCreateMarker} />
@@ -214,4 +188,4 @@ export default function Gantt() {
       </GanttProvider>
     </MainLayout>
   );
-};
+}

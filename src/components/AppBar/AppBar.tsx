@@ -1,4 +1,5 @@
 import type React from "react";
+import { Button } from "../ui/button";
 
 interface IAppBarProps {
   title: string;
@@ -21,14 +22,14 @@ export default function AppBar({ title, description, buttons }: IAppBarProps) {
         {buttons &&
           buttons.length > 0 &&
           buttons.map((btn, index) => (
-            <button
+            <Button
               key={index}
               onClick={btn.onClick}
               className="flex flex-row items-center justify-between gap-2 rounded-md border border-black px-2 py-1 transition duration-100 hover:text-white"
             >
               <span className="ml-2">{btn.title}</span>
               {btn.icon}
-            </button>
+            </Button>
           ))}
       </div>
     </div>

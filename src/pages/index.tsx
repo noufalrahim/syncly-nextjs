@@ -1,11 +1,14 @@
 import { MainLayout } from "@/layout";
+import { ProtectedRoute } from "@/routes";
 
 export default function Home() {
   return (
     <div>
-      <MainLayout>
-        <div></div>
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <div></div>
+        </MainLayout>
+      </ProtectedRoute>
     </div>
   );
 }

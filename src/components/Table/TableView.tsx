@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { useReadData } from "@/hooks/useReadData";
 import { priorityFieldsGenerator } from "@/lib/utils";
-import type { ProjectType, TColumn, TTask } from "@/types";
+import type { TProject, TColumn, TTask } from "@/types";
 import { BadgeComponent } from "../BadgeComponent";
 import { Toolbar } from ".";
 
@@ -26,7 +26,7 @@ export default function TableView({ projectId }: TableView) {
   const { data: tasksData, isLoading: tasksLoading } = useReadData<
     {
       task: TTask;
-      project: ProjectType;
+      project: TProject;
       column: TColumn;
     }[]
   >("tasks", `/tasks/fields/many?projectId=${projectId}`);
@@ -38,9 +38,7 @@ export default function TableView({ projectId }: TableView) {
   return (
     <div>
       <div className="border-gray-500 border-dashed py-5 mb-10 border-y">
-        <h1 className="text-2xl font-bold mb-2">
-          {tasksData && tasksData[0]?.project.name} - Issues
-        </h1>
+        <h1 className="text-2xl font-bold mb-2">{tasksData?.[0]?.project.name} - Issues</h1>
         <Toolbar />
       </div>
       <div className="border rounded-lg">
@@ -58,8 +56,8 @@ export default function TableView({ projectId }: TableView) {
             {tasksData &&
               tasksData.length > 0 &&
               tasksData.map((record) => (
-                <TableRow key={record.task.id!} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell className="font-medium">{record.task.title}</TableCell>
+                <TableRow key={record?.task?.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableCell className="font-medium">{record?.task?.title}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6 bg-gray-300 text-gray-700">
@@ -73,7 +71,7 @@ export default function TableView({ projectId }: TableView) {
                   <TableCell>
                     {record.task.priority && (
                       <BadgeComponent
-                        title={priorityFieldsGenerator(record.task.priority).label}
+                        title={priorityFieldsGenerator(record?.task?.priority).label}
                         icon={FlagIcon}
                         bgColor={priorityFieldsGenerator(record.task.priority).color}
                         textColor={priorityFieldsGenerator(record.task.priority).textColor}

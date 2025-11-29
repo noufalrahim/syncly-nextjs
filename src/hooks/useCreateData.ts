@@ -14,16 +14,9 @@ export const useAuthSignup = <TResponse>() => {
   });
 };
 
-export const useAuthSignIn = () => {
+export const useAuthSignIn = <TResponse>() => {
   return useMutation<
-    {
-      success: boolean;
-      message?: string;
-      data: {
-        user: TUser | null;
-        token: string;
-      };
-    },
+    TResponse,
     Error,
     { email: string; password: string }
   >({
