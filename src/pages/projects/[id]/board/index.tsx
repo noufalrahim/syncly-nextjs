@@ -34,7 +34,7 @@ export default function Board() {
 
   const {
     data: tasksResponse,
-    isPending: taskResponsePending,
+    isFetching: taskResponsePending,
     refetch: refetchTasks,
   } = useReadData<{ data: Record<string, TColumn>; message: string; success: boolean }>(
     "tasks-by-project",

@@ -37,6 +37,7 @@ import { useReadData } from "@/hooks/useReadData";
 import { priorityFieldsGenerator } from "@/lib/utils";
 import type { RootState } from "@/redux/store";
 import { EPriority, type TLabel, type TTask } from "@/types";
+import { TaskSkeleton } from "@/components/Skeletons";
 
 interface AddTaskProps {
   projectId: string;
@@ -150,7 +151,9 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
     setAdding(false);
   };
 
-  if (isPending) return <Loader className="animate-spin" />;
+  if (isPending) {
+    return <TaskSkeleton />
+  };
 
   return (
     <>
