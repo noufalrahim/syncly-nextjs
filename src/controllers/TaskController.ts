@@ -1,9 +1,8 @@
+import type { Task } from "@/domain/entities/TaskEntity";
 import { connectDB } from "@/infrastructure/db/connect";
 import { TaskRepository } from "@/infrastructure/repositories/TaskRepository";
-import { Task } from "@/domain/entities/TaskEntity";
 
 export class TaskController {
-
   async createTask(data: Task) {
     try {
       await connectDB();
@@ -38,7 +37,6 @@ export class TaskController {
   }
 
   async getTasksByProjectId(projectId: string, groupByColumn?: boolean) {
-
     try {
       await connectDB();
       const repo = new TaskRepository();

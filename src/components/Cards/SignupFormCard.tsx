@@ -1,34 +1,17 @@
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { z } from "zod"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form"
-import { faker } from "@faker-js/faker"
-import { useAuthSignIn, useAuthSignup } from "@/hooks/useCreateData"
-import { EUrl, TUser } from "@/types"
-import { Loader2 } from "lucide-react"
-import { useRouter } from "next/router"
+import { faker } from "@faker-js/faker";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/router";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useAuthSignIn, useAuthSignup } from "@/hooks/useCreateData";
+import { cn } from "@/lib/utils";
+import { EUrl, type TUser } from "@/types";
 
 const formSchema = z
   .object({
@@ -40,13 +23,9 @@ const formSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
-  })
+  });
 
-export default function SignupFormCard({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-
+export default function SignupFormCard({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
 
   const { mutate: signInMutate, isPending: signInIsPending } = useAuthSignIn<{
@@ -64,9 +43,7 @@ export default function SignupFormCard({
     message: string;
   }>();
 
-
-  const password = faker.internet.password({length: 7});
-
+  const password = faker.internet.password({ length: 7 });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -76,7 +53,7 @@ export default function SignupFormCard({
       password: password,
       confirmPassword: password,
     },
-  })
+  });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     console.log(data);
@@ -84,40 +61,38 @@ export default function SignupFormCard({
       {
         name: data.name,
         email: data.email,
-        password: data.password
+        password: data.password,
       },
       {
         onSuccess: (res) => {
-          if(res && res.success && res.data){
+          if (res && res.success && res.data) {
             signInMutate(
               {
                 email: data.email,
-                password: data.password
+                password: data.password,
               },
               {
                 onSuccess: (res) => {
-                  if(res && res.success && res.data){
-                    localStorage.setItem('token', res.data.token);
+                  if (res && res.success && res.data) {
+                    localStorage.setItem("token", res.data.token);
                     console.log("Sign in successfull");
                     router.push(EUrl.BOARD);
                   }
-                }
-              }
-            )
+                },
+              },
+            );
           }
-        }
-      }
-    )
-  }
+        },
+      },
+    );
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Create your account</CardTitle>
-          <CardDescription>
-            Enter your email below to create your account
-          </CardDescription>
+          <CardDescription>Enter your email below to create your account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -174,9 +149,7 @@ export default function SignupFormCard({
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="confirmPassword">
-                        Confirm Password
-                      </FieldLabel>
+                      <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
                       <FormField
                         control={form.control}
                         name="confirmPassword"
@@ -192,20 +165,16 @@ export default function SignupFormCard({
                     </Field>
                   </div>
 
-                  <FieldDescription>
-                    Must be at least 6 characters long.
-                  </FieldDescription>
+                  <FieldDescription>Must be at least 6 characters long.</FieldDescription>
                 </Field>
 
                 <Field>
                   <Button type="submit" disabled={signUpIsPending || signInIsPending}>
-                    {
-                      (signInIsPending || signUpIsPending) ? (
-                        <Loader2 className="animate-spin"/>
-                      ) : (
-                        'Create Account'
-                      )
-                    }
+                    {signInIsPending || signUpIsPending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      "Create Account"
+                    )}
                   </Button>
                   <FieldDescription className="text-center">
                     Already have an account? <a href={EUrl.SIGNIN}>Sign in</a>
@@ -218,9 +187,9 @@ export default function SignupFormCard({
       </Card>
 
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <a href="#">Terms of Service</a> and{" "}
+        <a href="#">Privacy Policy</a>.
       </FieldDescription>
     </div>
-  )
+  );
 }

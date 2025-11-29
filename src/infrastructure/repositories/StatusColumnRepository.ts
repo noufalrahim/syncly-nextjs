@@ -1,19 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { StatusColumn } from "@/domain/entities/StatusColumnEntity";
-import { IStatusColumnRepository } from "@/domain/repositories/IStatusColumnRepository";
-import { Schema, model, models } from "mongoose";
 
-const statuscolumnSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
+import { model, models, Schema } from "mongoose";
+import type { StatusColumn } from "@/domain/entities/StatusColumnEntity";
+import type { IStatusColumnRepository } from "@/domain/repositories/IStatusColumnRepository";
+
+const statuscolumnSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    project: {
+      type: Schema.Types.ObjectId,
+      ref: "Project",
+      required: true,
+    },
   },
-  project: {
-    type: Schema.Types.ObjectId,
-    ref: "Project",
-    required: true,
-  }
-},{ timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
 statuscolumnSchema.virtual("id").get(function () {

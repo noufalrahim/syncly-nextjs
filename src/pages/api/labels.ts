@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { LabelController } from "@/controllers/LabelController";
 
 const controller = new LabelController();

@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { TaskController } from "@/controllers/TaskController";
 
 const controller = new TaskController();
@@ -15,7 +15,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (route === "project-id") {
-      const result = await controller.getTasksByProjectId(req.query.projectId as string, req.query.groupByColumn as unknown as boolean);
+      const result = await controller.getTasksByProjectId(
+        req.query.projectId as string,
+        req.query.groupByColumn as unknown as boolean,
+      );
       return res.status(200).json(result);
     }
 

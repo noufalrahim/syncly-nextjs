@@ -1,14 +1,14 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { Loader2 } from 'lucide-react';
-import { useReadData } from '../hooks/useReadData';
-import { EUrl, TProject, TWorkspace, type TUser } from '../types';
-import { setUser } from '../redux/userSlice';
-import { useRouter } from 'next/navigation';
-import { setWorkspace } from '@/redux/workspaceSlice';
-import { setProject } from '@/redux/projectSlice';
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { setProject } from "@/redux/projectSlice";
+import { setWorkspace } from "@/redux/workspaceSlice";
+import { useReadData } from "../hooks/useReadData";
+import { setUser } from "../redux/userSlice";
+import { EUrl, type TProject, type TUser, type TWorkspace } from "../types";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -22,10 +22,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [projectId, setProjectId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const t = localStorage.getItem('token');
-      const w = localStorage.getItem('workspace');
-      const p = localStorage.getItem('project');
+    if (typeof window !== "undefined") {
+      const t = localStorage.getItem("token");
+      const w = localStorage.getItem("workspace");
+      const p = localStorage.getItem("project");
       setToken(t);
       setWorkspaceId(w);
       setProjectId(p);
@@ -39,19 +39,27 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     success: boolean;
     data: TUser | null;
     message: string;
-  }>('users', '/get-token');
+  }>("users", "/get-token");
 
-  const { data: workspaceData, isLoading: workspaceLoading, isError: workspaceError } = useReadData<{
+  const {
+    data: workspaceData,
+    isLoading: workspaceLoading,
+    isError: workspaceError,
+  } = useReadData<{
     success: boolean;
     data: TWorkspace | null;
     message: string;
-  }>('workspaces', `/workspaces?id=${workspaceId}&type=id`);
+  }>("workspaces", `/workspaces?id=${workspaceId}&type=id`);
 
-  const { data: projectData, isLoading: projectLoading, isError: projectError } = useReadData<{
+  const {
+    data: projectData,
+    isLoading: projectLoading,
+    isError: projectError,
+  } = useReadData<{
     success: boolean;
     data: TProject | null;
     message: string;
-  }>('projects', `/projects?id=${projectId}&type=id`);
+  }>("projects", `/projects?id=${projectId}&type=id`);
 
   useEffect(() => {
     if (data && data.success && data.data) {

@@ -1,4 +1,4 @@
-import { Label } from "../entities/LabelEntity";
+import type { Label } from "../entities/LabelEntity";
 
 export interface ILabelRepository {
   create(label: Label): Promise<Label>;

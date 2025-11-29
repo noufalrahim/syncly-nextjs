@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Workspace } from "@/domain/entities/WorkspaceEntity";
-import { IWorkspaceRepository } from "@/domain/repositories/IWorkspaceRepository";
-import { Schema, model, models } from "mongoose";
+
+import { model, models, Schema } from "mongoose";
+import type { Workspace } from "@/domain/entities/WorkspaceEntity";
+import type { IWorkspaceRepository } from "@/domain/repositories/IWorkspaceRepository";
 
 const workspaceSchema = new Schema(
   {
@@ -12,11 +13,10 @@ const workspaceSchema = new Schema(
       required: true,
     },
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
-const WorkspaceModel =
-  models.WorkspaceModel || model("Workspace", workspaceSchema);
+const WorkspaceModel = models.WorkspaceModel || model("Workspace", workspaceSchema);
 
 export class WorkspaceRepository implements IWorkspaceRepository {
   async create(workspace: Workspace): Promise<Workspace> {
@@ -33,7 +33,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
   }
 
   async findByUserId(userId: string): Promise<Workspace[] | null> {
-    return await WorkspaceModel.find({createdBy: userId});
+    return await WorkspaceModel.find({ createdBy: userId });
   }
 
   async update(id: string, data: Partial<Workspace>): Promise<Workspace | null> {

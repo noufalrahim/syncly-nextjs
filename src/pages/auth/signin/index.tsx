@@ -1,5 +1,5 @@
-import { LoginFormCard } from "@/components/Cards"
-import { GalleryVerticalEnd } from "lucide-react"
+import { GalleryVerticalEnd } from "lucide-react";
+import { LoginFormCard } from "@/components/Cards";
 
 export default function Signin() {
   return (
@@ -14,5 +14,5 @@ export default function Signin() {
         <LoginFormCard />
       </div>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { TTask } from "./TTask";
+import type { TTask } from "./TTask";
 
 export type TColumn = {
   id?: string;
@@ -7,5 +7,3 @@ export type TColumn = {
   color?: string;
   tasks?: TTask[];
 };
-
-

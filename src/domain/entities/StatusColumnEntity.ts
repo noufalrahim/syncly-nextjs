@@ -3,5 +3,5 @@ export class StatusColumn {
     public name: string,
     public project: string,
     public _id?: string,
-  ) { }
+  ) {}
 }

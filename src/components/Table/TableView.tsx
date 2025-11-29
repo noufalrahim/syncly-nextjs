@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { useReadData } from "@/hooks/useReadData";
 import { priorityFieldsGenerator } from "@/lib/utils";
-import type { TProject, TColumn, TTask } from "@/types";
+import type { TColumn, TProject, TTask } from "@/types";
 import { BadgeComponent } from "../BadgeComponent";
 import { Toolbar } from ".";
 

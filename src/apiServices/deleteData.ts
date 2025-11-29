@@ -1,6 +1,9 @@
 import apiClient from "./apiClient";
 
-export const deleteData = async <TResponse>(url: string, data: { id: string }): Promise<TResponse> => {
+export const deleteData = async <TResponse>(
+  url: string,
+  data: { id: string },
+): Promise<TResponse> => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Unauthorized");
 

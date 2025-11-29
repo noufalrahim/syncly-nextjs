@@ -1,4 +1,4 @@
-import { StatusColumn } from "../entities/StatusColumnEntity";
+import type { StatusColumn } from "../entities/StatusColumnEntity";
 
 export interface IStatusColumnRepository {
   create(statuscolumn: StatusColumn): Promise<StatusColumn>;

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Project } from "@/domain/entities/ProjectEntity";
-import { IProjectRepository } from "@/domain/repositories/IProjectRepository";
-import { Schema, model, models } from "mongoose";
+
+import { model, models, Schema } from "mongoose";
+import type { Project } from "@/domain/entities/ProjectEntity";
+import type { IProjectRepository } from "@/domain/repositories/IProjectRepository";
 
 const projectSchema = new Schema(
   {
@@ -18,11 +19,10 @@ const projectSchema = new Schema(
     },
     emoji: String,
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
-const ProjectModel =
-  models.Project || model("Project", projectSchema);
+const ProjectModel = models.Project || model("Project", projectSchema);
 
 export class ProjectRepository implements IProjectRepository {
   async create(project: Project): Promise<Project> {

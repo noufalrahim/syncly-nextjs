@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Label } from "@/domain/entities/LabelEntity";
-import { ILabelRepository } from "@/domain/repositories/ILabelRepository";
-import { Schema, model, models } from "mongoose";
+
+import { model, models, Schema } from "mongoose";
+import type { Label } from "@/domain/entities/LabelEntity";
+import type { ILabelRepository } from "@/domain/repositories/ILabelRepository";
 
 const labelSchema = new Schema(
   {},
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
-const LabelModel =
-  models.Label || model("Label", labelSchema);
+const LabelModel = models.Label || model("Label", labelSchema);
 
 export class LabelRepository implements ILabelRepository {
   async create(label: Label): Promise<Label> {

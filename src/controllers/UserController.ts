@@ -1,6 +1,6 @@
-import { UserRepository } from "@/infrastructure/repositories/UserRepository";
+import type { User } from "@/domain/entities/UserEntity";
 import { connectDB } from "@/infrastructure/db/connect";
-import { User } from "@/domain/entities/UserEntity";
+import { UserRepository } from "@/infrastructure/repositories/UserRepository";
 
 export class UserController {
   async createUser(data: User) {
@@ -77,11 +77,14 @@ export class UserController {
       await connectDB();
       const repo = new UserRepository();
       const result = await repo.forgotPassword(email);
-      if (!result.userFound)
-        return { success: false, data: null, message: "User not found" };
+      if (!result.userFound) return { success: false, data: null, message: "User not found" };
       return { success: true, data: result, message: "User found for password reset" };
     } catch (error: any) {
-      return { success: false, data: null, message: error.message || "Failed to process forgot password" };
+      return {
+        success: false,
+        data: null,
+        message: error.message || "Failed to process forgot password",
+      };
     }
   }
 
@@ -97,17 +100,24 @@ export class UserController {
     }
   }
 
-  async isUserExists(email: string, phone: {
-    countryCode: string;
-    number: string;
-  }) {
+  async isUserExists(
+    email: string,
+    phone: {
+      countryCode: string;
+      number: string;
+    },
+  ) {
     try {
       await connectDB();
       const repo = new UserRepository();
       const exists = await repo.userExists(email, phone);
       return { success: true, data: exists, message: "User existence checked successfully" };
     } catch (error: any) {
-      return { success: false, data: null, message: error.message || "Failed to check user existence" };
+      return {
+        success: false,
+        data: null,
+        message: error.message || "Failed to check user existence",
+      };
     }
   }
 }

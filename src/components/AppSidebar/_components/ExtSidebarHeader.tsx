@@ -1,10 +1,29 @@
+import { faker } from "@faker-js/faker";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown, Loader2, MoreHorizontal, PlusIcon } from "lucide-react";
+import { useRouter } from "next/router";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "sonner";
+import z from "zod";
+import { DialogModal } from "@/components/DialogModal";
+import { ContextMenu } from "@/components/ui/context-menu";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useCreateData } from "@/hooks/useCreateData";
+import { useDeleteData } from "@/hooks/useDeleteData";
+import { useReadData } from "@/hooks/useReadData";
+import type { RootState } from "@/redux/store";
+import { setWorkspace } from "@/redux/workspaceSlice";
+import { EUrl, type TWorkspace } from "@/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,25 +31,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
-import { useReadData } from "@/hooks/useReadData";
-import { EUrl, TWorkspace } from "@/types";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
-import { useState } from "react";
-import { DialogModal } from "@/components/DialogModal";
-import z from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { faker } from "@faker-js/faker";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { useCreateData } from "@/hooks/useCreateData";
-import { useRouter } from "next/router";
-import { setWorkspace } from "@/redux/workspaceSlice";
-import { toast } from "sonner";
-import { ContextMenu } from "@/components/ui/context-menu";
-import { useDeleteData } from "@/hooks/useDeleteData";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -49,19 +49,25 @@ export default function ExtSidebarHeader() {
     defaultValues: { name: faker.company.name() },
   });
 
-  const { data: workspaces, isPending: isFetching, refetch: refetchWorkspaces } =
-    useReadData<{ success: boolean; data: TWorkspace[]; message: string }>(
-      "workspace-by-user-id",
-      `/workspaces?userId=${user?.id}&type=user-id`
-    );
+  const {
+    data: workspaces,
+    isPending: isFetching,
+    refetch: refetchWorkspaces,
+  } = useReadData<{ success: boolean; data: TWorkspace[]; message: string }>(
+    "workspace-by-user-id",
+    `/workspaces?userId=${user?.id}&type=user-id`,
+  );
 
   const { mutate: createWorkspace, isPending: isCreating } = useCreateData<
     TWorkspace,
     { success: boolean; data: TWorkspace; message: string }
   >("/workspaces");
 
-  const { mutate: deleteWorkspace, isPending: deleteWorkspaceIsPending } =
-    useDeleteData<{ success: boolean; data: null; message: string }>("/workspaces");
+  const { mutate: deleteWorkspace, isPending: deleteWorkspaceIsPending } = useDeleteData<{
+    success: boolean;
+    data: null;
+    message: string;
+  }>("/workspaces");
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     if (!user?.id) {
@@ -79,7 +85,7 @@ export default function ExtSidebarHeader() {
           } else toast.error("Something went wrong!", { position: "top-right" });
         },
         onError: () => toast.error("Something went wrong!", { position: "top-right" }),
-      }
+      },
     );
   };
 
@@ -103,7 +109,7 @@ export default function ExtSidebarHeader() {
         },
         onError: () =>
           toast.error("An error occured while deleting workspace", { position: "top-right" }),
-      }
+      },
     );
   };
 
@@ -130,7 +136,8 @@ export default function ExtSidebarHeader() {
                 </div>
               )}
 
-              {workspaces && workspaces?.data?.length > 0 &&
+              {workspaces &&
+                workspaces?.data?.length > 0 &&
                 workspaces.data.map((wrkspc) => (
                   <DropdownMenuItem
                     key={wrkspc.id}

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { User } from "@/domain/entities/UserEntity";
-import { IUserRepository } from "@/domain/repositories/IUserRepository";
-import { Schema, model, models } from "mongoose";
+
+import { model, models, Schema } from "mongoose";
+import type { User } from "@/domain/entities/UserEntity";
+import type { IUserRepository } from "@/domain/repositories/IUserRepository";
 
 const userSchema = new Schema(
   {
@@ -9,7 +10,7 @@ const userSchema = new Schema(
     email: String,
     password: String,
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
 const UserModel = models.User || model("User", userSchema);
@@ -48,7 +49,7 @@ export class UserRepository implements IUserRepository {
       const updatedUser = await UserModel.findOneAndUpdate(
         { [identifier.key]: identifier.value },
         { $set: updates },
-        { new: true }
+        { new: true },
       ).lean();
 
       return updatedUser as unknown as User;
@@ -63,7 +64,7 @@ export class UserRepository implements IUserRepository {
       const updatedUser = await UserModel.findOneAndUpdate(
         { email },
         { $set: { password } },
-        { new: true }
+        { new: true },
       ).lean();
 
       if (!updatedUser) throw new Error("User not found");
@@ -76,16 +77,17 @@ export class UserRepository implements IUserRepository {
   }
 
   async forgotPassword(email: string): Promise<{
-    userFound: boolean
+    userFound: boolean;
   }> {
     try {
       const user = await UserModel.findOne({ email }).lean();
-      if (!user) return {
-        userFound: false
-      };
+      if (!user)
+        return {
+          userFound: false,
+        };
       return {
         userFound: true,
-      }
+      };
     } catch (error: any) {
       console.error("Error fetching user for forgot password:", error);
       throw new Error(error.message || "Failed to fetch user for forgot password");
@@ -115,25 +117,22 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async userExists(email: string, phone: {
-    countryCode: string;
-    number: string;
-  }): Promise<boolean> {
+  async userExists(
+    email: string,
+    phone: {
+      countryCode: string;
+      number: string;
+    },
+  ): Promise<boolean> {
     try {
       const user = await UserModel.findOne({
-        $or: [
-          { email },
-          { phone: phone }
-        ]
+        $or: [{ email }, { phone: phone }],
       }).lean();
 
       return !!user;
-    }
-    catch (error: any) {
+    } catch (error: any) {
       console.error("Error checking if user exists:", error);
       throw new Error(error.message || "Failed to check if user exists");
     }
   }
-
 }
-

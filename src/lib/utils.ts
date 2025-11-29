@@ -59,7 +59,6 @@ export const colSpanMap: Record<number, string> = {
   12: "col-span-12",
 };
 
-
 export function ColumnsWithColorUtil(
   columns: TColumn[] | undefined,
   colors: string[],

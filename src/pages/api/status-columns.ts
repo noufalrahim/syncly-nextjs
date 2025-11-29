@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { StatusColumnController } from "@/controllers/StatusColumnController";
 
 const controller = new StatusColumnController();

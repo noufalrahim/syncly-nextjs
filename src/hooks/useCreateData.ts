@@ -15,11 +15,7 @@ export const useAuthSignup = <TResponse>() => {
 };
 
 export const useAuthSignIn = <TResponse>() => {
-  return useMutation<
-    TResponse,
-    Error,
-    { email: string; password: string }
-  >({
+  return useMutation<TResponse, Error, { email: string; password: string }>({
     mutationFn: ({ email, password }) => authSignIn(email, password),
   });
 };

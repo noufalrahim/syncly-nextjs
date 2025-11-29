@@ -10,5 +10,5 @@ export class Task {
     public label?: string,
     public description?: string,
     public _id?: string,
-  ) { }
+  ) {}
 }

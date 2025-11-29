@@ -1,27 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { MainLayout } from "@/layout";
-import { ProtectedRoute } from "@/routes";
-import { useReadData } from "@/hooks/useReadData";
+import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
+import { PlusIcon, Trash2 } from "lucide-react";
 import { useRouter } from "next/router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { TaskCard } from "@/components/Cards";
-import { TColumn, TTask } from "@/types";
+import { AddTask, TaskSheet } from "@/components/Kanban";
+import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { AddTask, TaskSheet } from "@/components/Kanban";
 import { useCreateData } from "@/hooks/useCreateData";
-import { toast } from "sonner";
-import { Loader } from "@/components/Loader";
 import { useDeleteData } from "@/hooks/useDeleteData";
+import { useReadData } from "@/hooks/useReadData";
+import { MainLayout } from "@/layout";
+import { ProtectedRoute } from "@/routes";
+import type { TColumn, TTask } from "@/types";
 
 export default function Board() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(false);
   const router = useRouter();
-  const [isClicked, setIsClicked] = useState(false);
+  const [isClicked, setIsClicked] = useState<boolean>(false);
   const inputRef = useRef<HTMLDivElement | null>(null);
-  const [newColumnName, setNewColumnName] = useState("");
+  const [newColumnName, setNewColumnName] = useState<string>("");
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+
 
   const { mutate: createColumn, isPending: createColumnIsPending } = useCreateData<
     {
@@ -33,39 +35,33 @@ export default function Board() {
       message: string;
       success: boolean;
     }
-  >('/status-columns');
+  >("/status-columns");
 
-  const { data: tasksResponse, isPending: taskResponsePending, refetch: refetchTasks } = useReadData<
-    {
-      data: Record<string, TColumn>;
-      message: string;
-      success: boolean;
-    }
-  >(
-    "tasks-by-project",
-    `/tasks?projectId=${router.query.id}&groupByColumn=true&type=project-id`
-  );
+  const {
+    data: tasksResponse,
+    isPending: taskResponsePending,
+    refetch: refetchTasks,
+  } = useReadData<{
+    data: Record<string, TColumn>;
+    message: string;
+    success: boolean;
+  }>("tasks-by-project", `/tasks?projectId=${router.query.id}&groupByColumn=true&type=project-id`);
 
-  const { mutate: deleteColumn, isPending: deleteColumnIsPending } = useDeleteData<
-    {
-      success: boolean;
-      data: null;
-      message: string;
-    }
-  >('/status-columns');
+  const { mutate: deleteColumn, isPending: deleteColumnIsPending } = useDeleteData<{
+    success: boolean;
+    data: null;
+    message: string;
+  }>("/status-columns");
 
-  const { mutate: deleteTask, isPending: deleteTaskIsPending } = useDeleteData<
-    {
-      success: boolean;
-      data: null;
-      message: string;
-    }
-  >('/tasks');
-
+  const { mutate: deleteTask, isPending: deleteTaskIsPending } = useDeleteData<{
+    success: boolean;
+    data: null;
+    message: string;
+  }>("/tasks");
 
   const columns = useMemo<Record<string, TColumn>>(
     () => tasksResponse?.data ?? {},
-    [tasksResponse]
+    [tasksResponse],
   );
 
   const onDragEnd = (result: DropResult) => {
@@ -115,21 +111,19 @@ export default function Board() {
       {
         onSuccess: (res) => {
           if (res && res.success && res.data) {
-            toast.success('Column added successfully', { position: 'top-right' });
+            toast.success("Column added successfully", { position: "top-right" });
             setIsClicked(false);
             setNewColumnName("");
             refetchTasks();
-          }
-          else {
-            toast.error('An error occured while adding column', { position: 'top-right' });
+          } else {
+            toast.error("An error occured while adding column", { position: "top-right" });
           }
         },
         onError: () => {
-          toast.error('An error occured while adding column', { position: 'top-right' });
-        }
-      }
-    )
-
+          toast.error("An error occured while adding column", { position: "top-right" });
+        },
+      },
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -143,49 +137,50 @@ export default function Board() {
   const handleDelete = (column: TColumn) => {
     deleteColumn(
       {
-        id: column.id!
+        id: column.id!,
       },
       {
         onSuccess: (res) => {
-          if(res && res.success){
-            toast.success('Column deleted successfully', { position: 'top-right' });
+          if (res && res.success) {
+            toast.success("Column deleted successfully", { position: "top-right" });
             refetchTasks();
-          }
-          else{
-            toast.error('An error occured while deleting column', { position: 'top-right' });
+          } else {
+            toast.error("An error occured while deleting column", { position: "top-right" });
           }
         },
         onError: () => {
-          toast.error('An error occured while deleting column', { position: 'top-right' });
-        }
-      }
-    )
-  };
-
-  const handleDeleteTask = (task: TTask) => {
-    deleteTask(
-      {
-        id: task.id!
+          toast.error("An error occured while deleting column", { position: "top-right" });
+        },
       },
-      {
-        onSuccess: (res) => {
-          if(res && res.success){
-            toast.success('Task deleted successfully', { position: 'top-right' });
-            refetchTasks();
-          }
-          else{
-            toast.error('An error occured while deleting task', { position: 'top-right' });
-          }
-        },
-        onError: () => {
-          toast.error('An error occured while deleting task', { position: 'top-right' });
-        }
-      }
-    )
+    );
   };
 
-  if(createColumnIsPending || taskResponsePending){
-    return <Loader />
+const handleDeleteTask = (task: TTask) => {
+  setDeletingTaskId(task.id!);
+
+  deleteTask(
+    { id: task.id! },
+    {
+      onSuccess: (res) => {
+        setDeletingTaskId(null);
+        if (res && res.success) {
+          toast.success("Task deleted successfully", { position: "top-right" });
+          refetchTasks();
+        } else {
+          toast.error("An error occured while deleting task", { position: "top-right" });
+        }
+      },
+      onError: () => {
+        setDeletingTaskId(null);
+        toast.error("An error occured while deleting task", { position: "top-right" });
+      },
+    },
+  );
+};
+
+
+  if (createColumnIsPending || taskResponsePending) {
+    return <Loader />;
   }
 
   return (
@@ -228,12 +223,22 @@ export default function Board() {
                                 ...provided.draggableProps.style,
                               }}
                             >
-                              <TaskCard task={task} setOpen={() => setOpen(true)} onDeleteTask={handleDeleteTask} />
+                              <TaskCard
+                                task={task}
+                                setOpen={() => setOpen(true)}
+                                onDeleteTask={handleDeleteTask}
+                                isPending={deletingTaskId === task.id}
+                                column={col}
+                              />
                             </div>
                           )}
                         </Draggable>
                       ))}
-                      <AddTask projectId={router.query.id as string} columnId={col.id as string} refetch={refetchTasks} />
+                      <AddTask
+                        projectId={router.query.id as string}
+                        columnId={col.id as string}
+                        refetch={refetchTasks}
+                      />
                     </div>
 
                     {provided.placeholder}
@@ -263,7 +268,9 @@ export default function Board() {
                   autoFocus
                   placeholder="Column Name..."
                 />
-                <Button variant={'secondary'} className="shadow-none" onClick={handleAddColumn}>Add</Button>
+                <Button variant={"secondary"} className="shadow-none" onClick={handleAddColumn}>
+                  Add
+                </Button>
               </div>
             )}
           </DragDropContext>

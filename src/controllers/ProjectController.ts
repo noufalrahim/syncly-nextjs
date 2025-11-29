@@ -1,9 +1,8 @@
+import type { Project } from "@/domain/entities/ProjectEntity";
 import { connectDB } from "@/infrastructure/db/connect";
 import { ProjectRepository } from "@/infrastructure/repositories/ProjectRepository";
-import { Project } from "@/domain/entities/ProjectEntity";
 
 export class ProjectController {
-
   async createProject(data: Project) {
     try {
       await connectDB();
@@ -37,17 +36,16 @@ export class ProjectController {
     }
   }
 
-   async getProjectByWorkspaceId(wrkspcId: string) {
-      try {
-        await connectDB();
-        const repo = new ProjectRepository();
-        const result = await repo.findByWorkspaceId(wrkspcId);
-        return { success: true, data: result, message: "Project fetched successfully" };
-      } catch (error: any) {
-        return { success: false, data: null, message: error.message || "Failed to fetch Project" };
-      }
+  async getProjectByWorkspaceId(wrkspcId: string) {
+    try {
+      await connectDB();
+      const repo = new ProjectRepository();
+      const result = await repo.findByWorkspaceId(wrkspcId);
+      return { success: true, data: result, message: "Project fetched successfully" };
+    } catch (error: any) {
+      return { success: false, data: null, message: error.message || "Failed to fetch Project" };
     }
-  
+  }
 
   async updateProject(id: string, data: Partial<Project>) {
     try {

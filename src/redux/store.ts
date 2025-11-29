@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
+import projectReducer from "./projectSlice";
 import userReducer from "./userSlice";
 import workspaceReducer from "./workspaceSlice";
-import projectReducer from "./projectSlice";
 
 export const store = configureStore({
   reducer: {

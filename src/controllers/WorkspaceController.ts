@@ -1,9 +1,8 @@
+import type { Workspace } from "@/domain/entities/WorkspaceEntity";
 import { connectDB } from "@/infrastructure/db/connect";
 import { WorkspaceRepository } from "@/infrastructure/repositories/WorkspaceRepository";
-import { Workspace } from "@/domain/entities/WorkspaceEntity";
 
 export class WorkspaceController {
-
   async createWorkspace(data: Workspace) {
     try {
       await connectDB();

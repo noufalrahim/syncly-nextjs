@@ -38,9 +38,10 @@ export const authSignup = async <TResponse>(data: TUser): Promise<TResponse> => 
   }
 };
 
-
-
-export const authSignIn = async<TResponse> (email: string, password: string): Promise<TResponse> => {
+export const authSignIn = async <TResponse>(
+  email: string,
+  password: string,
+): Promise<TResponse> => {
   try {
     const response = await apiClient.post<TResponse>(
       "/sign-in",

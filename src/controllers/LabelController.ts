@@ -1,9 +1,8 @@
+import type { Label } from "@/domain/entities/LabelEntity";
 import { connectDB } from "@/infrastructure/db/connect";
 import { LabelRepository } from "@/infrastructure/repositories/LabelRepository";
-import { Label } from "@/domain/entities/LabelEntity";
 
 export class LabelController {
-
   async createLabel(data: Label) {
     try {
       await connectDB();

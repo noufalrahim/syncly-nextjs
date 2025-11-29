@@ -3,3 +3,4 @@
 3. Separate schemas from repostiories.
 4. On delete col, project, workspace, delete all dependents.
 5. Position api calls in proper places like parent or child.
+6. Add noConsole to biome.

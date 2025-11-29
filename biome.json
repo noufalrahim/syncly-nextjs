@@ -36,7 +36,6 @@
         "noUnsafeOptionalChaining": "error"
       },
       "suspicious": {
-        "noConsole": "info",
         "noAlert": "error",
         "noDoubleEquals": "error",
         "noGlobalAssign": "error",

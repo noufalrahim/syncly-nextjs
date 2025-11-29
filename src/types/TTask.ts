@@ -1,6 +1,6 @@
 import type { TColumn } from "./TColumn";
-import { TLabel } from "./TLabel";
-import { TProject } from "./TProject";
+import type { TLabel } from "./TLabel";
+import type { TProject } from "./TProject";
 
 export type TTask = {
   id: string;

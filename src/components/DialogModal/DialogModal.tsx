@@ -1,14 +1,14 @@
-import React from "react";
+import { Loader2 } from "lucide-react";
+import type React from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DialogModalProps {
@@ -57,16 +57,14 @@ export default function DialogModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
-            "bg-white rounded-lg max-h-[90vh] overflow-y-auto max-w-none",
-            width ? width : "w-[500px]"
+          "bg-white rounded-lg max-h-[90vh] overflow-y-auto max-w-none",
+          width ? width : "w-[500px]",
         )}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && (
-            <DialogDescription className="text-light-200">
-              {description}
-            </DialogDescription>
+            <DialogDescription className="text-light-200">{description}</DialogDescription>
           )}
         </DialogHeader>
 
@@ -88,17 +86,16 @@ export default function DialogModal({
             <Button
               type="button"
               disabled={isLoading}
-              className={cn(
-                "w-full",
-                isDelete && "bg-red-500 text-white hover:bg-red-600"
-              )}
+              className={cn("w-full", isDelete && "bg-red-500 text-white hover:bg-red-600")}
               onClick={handleConfirm}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
                 </>
-              ) : confirmText ?? (isDelete ? "Delete" : "Confirm")}
+              ) : (
+                (confirmText ?? (isDelete ? "Delete" : "Confirm"))
+              )}
             </Button>
           )}
         </DialogFooter>

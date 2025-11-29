@@ -1,5 +1,7 @@
-import { ChevronDown, ChevronRight, Folder, LucideIcon, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, type LucideIcon, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -14,8 +16,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import Link from "next/link";
-import { useDispatch } from "react-redux";
 import { setProject } from "@/redux/projectSlice";
 
 interface IExtSidebarItemProps {
@@ -30,19 +30,28 @@ interface IExtSidebarItemProps {
   onDeleteProject: (pId: string) => void;
 }
 
-export default function ExtSidebarItem({ title, projectId, childrenItems, onDeleteProject }: IExtSidebarItemProps) {
+export default function ExtSidebarItem({
+  title,
+  projectId,
+  childrenItems,
+  onDeleteProject,
+}: IExtSidebarItemProps) {
   const [open, setOpen] = useState<boolean>(false);
 
   const dispatch = useDispatch();
 
   return (
-    <Collapsible open={open} onOpenChange={() => {
-      if (!open) {
-        localStorage.setItem("project", projectId);
-        dispatch(setProject(projectId))
-      }
-      setOpen(!open)
-    }} className="group/collapsible">
+    <Collapsible
+      open={open}
+      onOpenChange={() => {
+        if (!open) {
+          localStorage.setItem("project", projectId);
+          dispatch(setProject(projectId));
+        }
+        setOpen(!open);
+      }}
+      className="group/collapsible"
+    >
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton>
@@ -60,7 +69,9 @@ export default function ExtSidebarItem({ title, projectId, childrenItems, onDele
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start">
             <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600" onClick={() => onDeleteProject(projectId)}>Delete Project</DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600" onClick={() => onDeleteProject(projectId)}>
+              Delete Project
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
@@ -69,7 +80,10 @@ export default function ExtSidebarItem({ title, projectId, childrenItems, onDele
         <SidebarMenuSub>
           {childrenItems.map((c) => (
             <SidebarMenuSubItem key={c.key}>
-              <Link href={c.url} className="flex flex-row items-center gap-2 hover:bg-gray-200 p-1 rounded-md">
+              <Link
+                href={c.url}
+                className="flex flex-row items-center gap-2 hover:bg-gray-200 p-1 rounded-md"
+              >
                 <c.icon size={14} />
                 <span>{c.name}</span>
               </Link>

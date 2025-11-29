@@ -1,4 +1,4 @@
-import { Project } from "../entities/ProjectEntity";
+import type { Project } from "../entities/ProjectEntity";
 
 export interface IProjectRepository {
   create(project: Project): Promise<Project>;

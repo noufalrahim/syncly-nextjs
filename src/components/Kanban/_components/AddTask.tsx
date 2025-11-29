@@ -1,47 +1,42 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { parseDate } from "chrono-node";
 import { motion } from "framer-motion";
-import { TLabel, EPriority, TTask } from "@/types";
-import { useCreateData } from "@/hooks/useCreateData";
 import {
+  CalendarIcon,
+  Check,
   FlagIcon,
   Loader,
-  TagIcon,
-  CalendarIcon,
   Loader2,
-  PlusCircle,
   Plus,
-  Check,
+  PlusCircle,
+  TagIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useSelector } from "react-redux";
 import TextareaAutosize from "react-textarea-autosize";
+import { toast } from "sonner";
+import { z } from "zod";
+import { DialogModal } from "@/components/DialogModal";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { parseDate } from "chrono-node";
-import { Calendar } from "@/components/ui/calendar";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { priorityFieldsGenerator } from "@/lib/utils";
-import { DialogModal } from "@/components/DialogModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCreateData } from "@/hooks/useCreateData";
 import { useReadData } from "@/hooks/useReadData";
-import { toast } from "sonner";
-import { useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
-
-import { Form, FormField, FormItem, FormControl } from "@/components/ui/form";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { priorityFieldsGenerator } from "@/lib/utils";
+import type { RootState } from "@/redux/store";
+import { EPriority, type TLabel, type TTask } from "@/types";
 
 interface AddTaskProps {
   projectId: string;
@@ -75,8 +70,11 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
   const [selectedLabel, setSelectedLabel] = useState<TLabel | null>(null);
   const [priority, setPriority] = useState<EPriority | null>(null);
 
-  const { data: labelData, isLoading: labelDataIsLoading, refetch: refetchLabelData } =
-    useReadData<TLabel[]>("labels", `/labels?projectId=${projectId}`);
+  const {
+    data: labelData,
+    isLoading: labelDataIsLoading,
+    refetch: refetchLabelData,
+  } = useReadData<TLabel[]>("labels", `/labels?projectId=${projectId}`);
 
   const workspace = useSelector((state: RootState) => state.workspace.entity);
 
@@ -109,7 +107,6 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
   });
 
   const submitForm = (data: z.infer<typeof schema>) => {
-    
     if (!workspace?.id || !projectId || !columnId) return;
 
     const payload = {
@@ -126,17 +123,16 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
     mutate(payload, {
       onSuccess(res) {
         if (res?.success && res?.data) {
-          toast.success("Task added successfully", {position: 'top-right'});
+          toast.success("Task added successfully", { position: "top-right" });
           refetch();
           resetForm();
-        }
-        else {
-          toast.error('An error occurred while adding the task!', {position: 'top-right'});
+        } else {
+          toast.error("An error occurred while adding the task!", { position: "top-right" });
         }
       },
       onError(err) {
         console.log("Error", err);
-        toast.error("An error occurred while adding the task!", {position: 'top-right'});
+        toast.error("An error occurred while adding the task!", { position: "top-right" });
       },
     });
   };
@@ -203,7 +199,11 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
                 <div className="flex flex-row gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="bg-white border border-gray-300 shadow-none" size="sm">
+                      <Button
+                        variant="outline"
+                        className="bg-white border border-gray-300 shadow-none"
+                        size="sm"
+                      >
                         <TagIcon className="text-gray-700" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -215,7 +215,8 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
                         </div>
                       )}
 
-                      {labelData && labelData?.length > 0 &&
+                      {labelData &&
+                        labelData?.length > 0 &&
                         labelData.map((lbl) => {
                           const isSelected = selectedLabel?.id === lbl.id;
                           return (
@@ -244,7 +245,11 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="bg-white border border-gray-300 shadow-none" size="sm">
+                      <Button
+                        variant="outline"
+                        className="bg-white border border-gray-300 shadow-none"
+                        size="sm"
+                      >
                         <FlagIcon className="text-gray-700" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -316,7 +321,10 @@ export default function AddTask({ projectId, columnId, refetch }: AddTaskProps) 
                             </Button>
                           </PopoverTrigger>
 
-                          <PopoverContent className="w-auto overflow-hidden p-0 bg-white" align="end">
+                          <PopoverContent
+                            className="w-auto overflow-hidden p-0 bg-white"
+                            align="end"
+                          >
                             <Calendar
                               mode="single"
                               selected={date}

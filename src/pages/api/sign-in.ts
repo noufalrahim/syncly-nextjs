@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/api/sign-in.ts
+
+import type { NextApiRequest, NextApiResponse } from "next";
 import { AuthController } from "@/controllers/AuthController";
-import { NextApiRequest, NextApiResponse } from "next";
 
 const controller = new AuthController();
 

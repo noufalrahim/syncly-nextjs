@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "@/infrastructure/repositories/StatusColumnRepository";
-import { Task } from "@/domain/entities/TaskEntity";
-import { ITaskRepository } from "@/domain/repositories/ITaskRepository";
-import { EPriority } from "@/types";
-import { Schema, model, models } from "mongoose";
+import mongoose, { model, models, Schema } from "mongoose";
+import type { Task } from "@/domain/entities/TaskEntity";
+import type { ITaskRepository } from "@/domain/repositories/ITaskRepository";
 import { StatusColumnModel } from "@/infrastructure/repositories/StatusColumnRepository";
-import mongoose from "mongoose";
+import { EPriority } from "@/types";
 
 const taskSchema = new Schema(
   {
@@ -52,15 +51,14 @@ const taskSchema = new Schema(
       required: false,
     },
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
 
 taskSchema.virtual("id").get(function () {
   return this._id.toHexString();
 });
 
-const TaskModel =
-  models.Task || model("Task", taskSchema);
+const TaskModel = models.Task || model("Task", taskSchema);
 
 export class TaskRepository implements ITaskRepository {
   async create(task: Task): Promise<Task> {
@@ -76,50 +74,48 @@ export class TaskRepository implements ITaskRepository {
     return await TaskModel.findById(id);
   }
 
-async findByProjectId(projectId: string, groupByColumn?: boolean): Promise<any> {
-  if (!groupByColumn) {
-    return await TaskModel.find({ project: projectId })
-      .populate("column")
-      .lean();
-  }
+  async findByProjectId(projectId: string, groupByColumn?: boolean): Promise<any> {
+    if (!groupByColumn) {
+      return await TaskModel.find({ project: projectId }).populate("column").lean();
+    }
 
-  const columns = await StatusColumnModel.aggregate([
-    {
-      $match: {
-        project: new mongoose.Types.ObjectId(projectId),
+    const columns = await StatusColumnModel.aggregate([
+      {
+        $match: {
+          project: new mongoose.Types.ObjectId(projectId),
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "tasks",
-        localField: "_id",
-        foreignField: "column",
-        as: "tasks",
+      {
+        $lookup: {
+          from: "tasks",
+          localField: "_id",
+          foreignField: "column",
+          as: "tasks",
+        },
       },
-    },
-    {
-      $project: {
-        id: { $toString: "$_id" },
-        name: 1,
-        tasks: {
-          $map: {
-            input: "$tasks",
-            as: "t",
-            in: {
-              id: { $toString: "$$t._id" },
-              title: "$$t.title",
-              description: "$$t.description",
-              column: { $toString: "$_id" },
-              project: { $toString: "$$t.project" },
+      {
+        $project: {
+          id: { $toString: "$_id" },
+          name: 1,
+          tasks: {
+            $map: {
+              input: "$tasks",
+              as: "t",
+              in: {
+                id: { $toString: "$$t._id" },
+                title: "$$t.title",
+                description: "$$t.description",
+                column: { $toString: "$_id" },
+                project: { $toString: "$$t.project" },
+              },
             },
           },
         },
       },
-    },
-  ]);
+    ]);
 
-  return columns;
-}
+    return columns;
+  }
   async update(id: string, data: Partial<Task>): Promise<Task | null> {
     return await TaskModel.findByIdAndUpdate(id, data, { new: true });
   }

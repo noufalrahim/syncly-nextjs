@@ -1,43 +1,28 @@
-import { z } from "zod"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/router";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-} from "@/components/ui/form"
-import { EUrl, TUser } from "@/types"
-import { useAuthSignIn } from "@/hooks/useCreateData"
-import { useRouter } from "next/router"
+} from "@/components/ui/field";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useAuthSignIn } from "@/hooks/useCreateData";
+import { cn } from "@/lib/utils";
+import { EUrl, type TUser } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email().min(1),
   password: z.string().min(1),
-})
+});
 
-export default function LoginFormCard({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-
+export default function LoginFormCard({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
 
   const { mutate: signInMutate, isPending: signInIsPending } = useAuthSignIn<{
@@ -55,35 +40,33 @@ export default function LoginFormCard({
       email: "noufalrahim6784@gmail.com",
       password: "Noufal@123",
     },
-  })
+  });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     console.log(data);
     signInMutate(
       {
         email: data.email,
-        password: data.password
+        password: data.password,
       },
       {
         onSuccess: (res) => {
           if (res && res.success && res.data) {
-            localStorage.setItem('token', res.data.token);
+            localStorage.setItem("token", res.data.token);
             console.log("Sign in successfull");
             router.push(EUrl.BOARD);
           }
-        }
-      }
-    )
-  }
+        },
+      },
+    );
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>
-            Login with your Apple or Google account
-          </CardDescription>
+          <CardDescription>Login with your Apple or Google account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -138,10 +121,7 @@ export default function LoginFormCard({
                 <Field>
                   <div className="flex items-center">
                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <a
-                      href="#"
-                      className="ml-auto text-sm underline-offset-4 hover:underline"
-                    >
+                    <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline">
                       Forgot your password?
                     </a>
                   </div>
@@ -171,9 +151,9 @@ export default function LoginFormCard({
       </Card>
 
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <a href="#">Terms of Service</a> and{" "}
+        <a href="#">Privacy Policy</a>.
       </FieldDescription>
     </div>
-  )
+  );
 }

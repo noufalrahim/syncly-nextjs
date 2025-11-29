@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { ProjectController } from "@/controllers/ProjectController";
 
 const controller = new ProjectController();
