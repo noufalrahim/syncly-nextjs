@@ -94,11 +94,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (isError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-red-500">
-        Failed to load user data. Please try again.
-      </div>
-    );
+    router.replace(EUrl.SIGNIN);
   }
 
   return <>{children}</>;

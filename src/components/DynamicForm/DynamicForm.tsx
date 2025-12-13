@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
-import { type JSX, useEffect, useMemo } from "react";
+import { Check, ChevronsUpDown, Loader, Loader2 } from "lucide-react";
+import React, { type JSX, useEffect, useMemo } from "react";
 import { type SubmitHandler, useForm } from "react-hook-form";
 import { type ZodTypeAny, z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,11 +24,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { colSpanMap } from "@/lib/utils";
+import { cn, colSpanMap } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-export type FieldType = "text" | "number" | "dropdown" | "radio" | "checkbox" | "textarea";
+export type FieldType =
+  | "text"
+  | "number"
+  | "dropdown"
+  | "radio"
+  | "checkbox"
+  | "textarea"
+  | "autocomplete";
 
 export interface FormFieldSchema {
   name: string;
@@ -41,7 +61,7 @@ export interface FormFieldSchema {
     maxLength?: number;
     minLength?: number;
   };
-  constraint?: "emoji" | "lettersOnly" | "numericOnly";
+  constraint?: "emoji" | "lettersOnly" | "numericOnly" | "email";
   wrapperClass?: string;
   labelClass?: string;
   inputClass?: string;
@@ -49,7 +69,9 @@ export interface FormFieldSchema {
   layout?: {
     colSpan?: number;
   };
+  onSearch?: (keyword: string) => void;
   render?: (form: any) => JSX.Element;
+  isLoading?: boolean;
 }
 
 export interface DynamicFormProps {
@@ -71,6 +93,9 @@ export default function DynamicForm({
   formClass,
   gridClass,
 }: DynamicFormProps) {
+  const [open, setOpen] = React.useState(false);
+  const [value, setValue] = React.useState("");
+
   const emojiRegex = /^(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)+$/u;
   const lettersRegex = /^[A-Za-z ]+$/;
   const numericRegex = /^[0-9]+$/;
@@ -81,14 +106,13 @@ export default function DynamicForm({
     schema.forEach((field) => {
       let validator = z.string();
 
-      if (field.constraint === "emoji")
-        validator = validator.regex(emojiRegex, "Only emojis allowed");
-      if (field.constraint === "lettersOnly")
-        validator = validator.regex(lettersRegex, "Only letters allowed");
-      if (field.constraint === "numericOnly")
-        validator = validator.regex(numericRegex, "Only numbers allowed");
+      if (field.constraint === "emoji") validator = validator.regex(emojiRegex);
+      if (field.constraint === "lettersOnly") validator = validator.regex(lettersRegex);
+      if (field.constraint === "numericOnly") validator = validator.regex(numericRegex);
+      if (field.constraint === "email")
+        validator = validator.regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
 
-      if (field.validation?.required) validator = validator.min(1, `${field.label} is required`);
+      if (field.validation?.required) validator = validator.min(1);
       if (field.validation?.maxLength) validator = validator.max(field.validation.maxLength);
 
       zodSchemaObject[field.name] = validator;
@@ -124,6 +148,60 @@ export default function DynamicForm({
     const v = form.watch(field.name);
 
     if (field.render) return field.render(form);
+
+    if (field.type === "autocomplete") {
+      return (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className={cn("w-full", field.inputClass)}
+            >
+              {value
+                ? field.options?.find((opt) => opt.value === value)?.label
+                : field.placeholder}
+              <ChevronsUpDown className="opacity-50" />
+            </Button>
+          </PopoverTrigger>
+
+          <PopoverContent className={'w-[25rem]'}>
+            <Command>
+              <CommandInput placeholder={field.placeholder} className="h-9" onValueChange={(val) => field.onSearch?.(val)} />
+              <CommandList>
+                {field.isLoading ? (
+                  <CommandEmpty className="items-center flex justify-center pt-5"><Loader2 className="animate-spin"/></CommandEmpty>
+                ) : (
+                  <CommandEmpty>No results.</CommandEmpty>
+                )}
+                <CommandGroup>
+                  {field.options?.map((opt) => (
+                    <CommandItem
+                      key={opt.value}
+                      value={opt.value}
+                      onSelect={(currentValue) => {
+                        setValue(currentValue === value ? "" : currentValue);
+                        form.setValue(field.name, currentValue);
+                        setOpen(false);
+                      }}
+                    >
+                      {opt.label}
+                      <Check
+                        className={cn(
+                          "ml-auto",
+                          value === opt.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      );
+    }
 
     if (["text", "number"].includes(field.type)) {
       return (
@@ -206,7 +284,7 @@ export default function DynamicForm({
           {schema.map((field) => (
             <div
               key={field.name}
-              className={`${colSpanMap[field.layout?.colSpan || 12]} ${field.className}`}
+              className={cn(colSpanMap[field.layout?.colSpan || 12], field.className)}
             >
               <FormField
                 control={form.control}

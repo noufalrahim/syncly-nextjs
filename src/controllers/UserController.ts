@@ -37,6 +37,31 @@ export class UserController {
     }
   }
 
+  async getUserByEmail(email: string) {
+    try {
+      await connectDB();
+      const repo = new UserRepository();
+      const user = await repo.findByEmail(email);
+      if (!user) return { success: false, data: null, message: "User not found" };
+      return { success: true, data: user, message: "User fetched successfully" };
+    } catch (error: any) {
+      return { success: false, data: null, message: error.message || "Failed to fetch user" };
+    }
+  }
+
+  async getManyUsersByEmail(keyword: string) {
+  try {
+    await connectDB();
+    const repo = new UserRepository();
+    const users = await repo.findManyByEmail(keyword);
+
+    return { success: true, data: users, message: "Users fetched successfully" };
+  } catch (error: any) {
+    return { success: false, data: null, message: error.message || "Failed to search users" };
+  }
+}
+
+
   async login(email: string, password: string) {
     try {
       await connectDB();

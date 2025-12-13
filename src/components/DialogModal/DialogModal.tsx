@@ -18,7 +18,7 @@ interface DialogModalProps {
   onCancel?: () => void;
   confirmText?: string;
   cancelText?: string;
-  title: string;
+  title?: string;
   description?: string;
   children?: React.ReactNode;
   isLoading?: boolean;

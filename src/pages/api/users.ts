@@ -20,6 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json(response);
     }
   } else if (req.method === "GET") {
+    const param = req.query;
+    if (param.type === "get_many_by_email") {
+      const response = await controller.getManyUsersByEmail(param.keyword as string);
+      return res.status(200).json(response);
+    }
     const users = await controller.getUsers();
     return res.status(200).json(users);
   } else {

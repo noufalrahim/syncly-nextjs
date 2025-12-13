@@ -26,6 +26,7 @@ export default function Board() {
   const [newColumnName, setNewColumnName] = useState("");
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [localColumns, setLocalColumns] = useState<Record<string, TColumn>>({});
+  const [activeTask, setActiveTask] = useState<TTask | null>(null);
 
   const { mutate: createColumn, isPending: createColumnIsPending } = useCreateData<
     { name: string; project: string },
@@ -178,6 +179,11 @@ export default function Board() {
     );
   };
 
+  const handleOpenTask = (task: TTask) => {
+    setActiveTask(task);
+    setOpen(true);
+  };
+
   if (createColumnIsPending || taskResponsePending) return <Loader />;
 
   return (
@@ -219,7 +225,7 @@ export default function Board() {
                               >
                                 <TaskCard
                                   task={task}
-                                  setOpen={() => setOpen(true)}
+                                  setOpen={() => handleOpenTask(task)}
                                   onDeleteTask={handleDeleteTask}
                                   isPending={deletingTaskId === task.id}
                                   column={col}
@@ -271,7 +277,7 @@ export default function Board() {
           </DragDropContext>
         </div>
 
-        <TaskSheet openSheet={open} onOpenChange={setOpen} />
+        <TaskSheet openSheet={open} onOpenChange={setOpen} task={activeTask}/>
       </MainLayout>
     </ProtectedRoute>
   );

@@ -7,3 +7,4 @@ export * from "./TProject";
 export * from "./TTask";
 export * from "./TUser";
 export * from "./TWorkspace";
+export * from "./TWorkspaceMember";

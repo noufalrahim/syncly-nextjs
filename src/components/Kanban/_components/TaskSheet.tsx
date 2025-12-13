@@ -2,7 +2,7 @@
 
 import { InfoIcon, Link as LinkIcon, Paperclip } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,10 +32,12 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TTask } from "@/types";
 
 interface ITaskSheetProps {
   openSheet: boolean;
   onOpenChange: (open: boolean) => void;
+  task: TTask | null;
 }
 
 const formSchema = z.object({
@@ -49,7 +51,7 @@ const formSchema = z.object({
   comment: z.string().optional(),
 });
 
-export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) {
+export default function TaskSheet({ openSheet, onOpenChange, task }: ITaskSheetProps) {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [references, setReferences] = useState<{ title: string; url: string }[]>([]);
   const [refTitle, setRefTitle] = useState("");
@@ -58,10 +60,10 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      assignee: "",
-      priority: "",
+      title: task?.title,
+      description: task?.description,
+      assignee: task?.assignee,
+      priority: task?.priority,
       dependency: "",
       labels: "",
       comment: "",
@@ -95,6 +97,21 @@ export default function TaskSheet({ openSheet, onOpenChange }: ITaskSheetProps) 
       references,
     });
   };
+
+  useEffect(() => {
+    if (task) {
+      form.reset({
+        title: task.title,
+        description: task.description,
+        assignee: task.assignee,
+        priority: task.priority,
+        dependency: "",
+        labels: "",
+        comment: "",
+        dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+      });
+    }
+  }, [task]);
 
   return (
     <Sheet open={openSheet} onOpenChange={onOpenChange}>

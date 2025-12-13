@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useAuthSignIn } from "@/hooks/useCreateData";
 import { cn } from "@/lib/utils";
 import { EUrl, type TUser } from "@/types";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email().min(1),
@@ -139,7 +140,14 @@ export default function LoginFormCard({ className, ...props }: React.ComponentPr
                 </Field>
 
                 <Field>
-                  <Button type="submit">Login</Button>
+                  {
+                    signInIsPending ? (
+                      <Button type="submit" disabled>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      </Button>
+                    ) : (
+                      <Button type="submit">Login</Button>
+                    )}
                   <FieldDescription className="text-center">
                     Don&apos;t have an account? <a href={EUrl.SIGNUP}>Sign up</a>
                   </FieldDescription>

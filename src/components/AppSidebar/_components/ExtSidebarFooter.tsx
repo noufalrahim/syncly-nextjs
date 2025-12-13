@@ -11,8 +11,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import { useRouter } from "next/router";
+import { EUrl } from "@/types";
 
 export default function ExtSidebarFooter() {
+
+  const router = useRouter();
+
   return (
     <SidebarFooter>
       <SidebarMenu>
@@ -31,7 +36,10 @@ export default function ExtSidebarFooter() {
               <DropdownMenuItem>
                 <span>Billing</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                localStorage.clear();
+                router.replace(EUrl.SIGNIN);
+              }}>
                 <span>Sign out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

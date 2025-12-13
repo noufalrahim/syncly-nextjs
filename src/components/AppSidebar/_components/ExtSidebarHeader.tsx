@@ -8,7 +8,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
 import z from "zod";
 import { DialogModal } from "@/components/DialogModal";
-import { ContextMenu } from "@/components/ui/context-menu";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -31,6 +30,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
+import WorkspaceMenuSidebar from "./WorkspaceMenuSidebar";
+import { ManageUsers } from "./WorkspaceMenuItems";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -40,6 +41,7 @@ export default function ExtSidebarHeader() {
   const [open, setOpen] = useState<boolean>(false);
   const router = useRouter();
   const dispatch = useDispatch();
+  const [openMenu, setOpenMenu] = useState<boolean>(false);
 
   const user = useSelector((state: RootState) => state.user.entity);
   const workspace = useSelector((state: RootState) => state.workspace.entity);
@@ -115,85 +117,75 @@ export default function ExtSidebarHeader() {
 
   return (
     <SidebarHeader>
-      <div>
-        <p className="text-lg font-bold">Syncly</p>
-      </div>
+      <p className="text-xl font-semibold tracking-tight">Syncly</p>
 
       <SidebarMenu>
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarMenuButton>
-                {workspace ? workspace.name : "Select workspace"}
-                <ChevronDown className="ml-auto" />
+              <SidebarMenuButton className="flex items-center justify-between">
+                <span className="truncate">{workspace ? workspace.name : "Select workspace"}</span>
+                <ChevronDown className="ml-2 h-4 w-4 opacity-70" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
-              {(!workspaces || isFetching) && (
-                <div className="p-5 flex items-center justify-center">
-                  <Loader2 className="animate-spin" />
+            <DropdownMenuContent className="w-[--radix-popper-anchor-width] p-1 rounded-lg shadow-lg border bg-white/95 backdrop-blur">
+              {isFetching && (
+                <div className="p-4 flex items-center justify-center">
+                  <Loader2 className="animate-spin h-5 w-5 text-muted-foreground" />
                 </div>
               )}
 
-              {workspaces &&
-                workspaces?.data?.length > 0 &&
-                workspaces.data.map((wrkspc) => (
-                  <DropdownMenuItem
-                    key={wrkspc.id}
-                    className="text-sm flex items-center justify-between"
-                    onClick={() => {
-                      localStorage.setItem("workspace", wrkspc.id!);
-                      dispatch(setWorkspace(wrkspc));
-                    }}
+              {workspaces && workspaces?.data?.length > 0 &&
+                workspaces.data.map((w) => (
+                  <div
+                    key={w.id}
+                    className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-accent transition"
                   >
-                    {wrkspc.name}
+                    <DropdownMenuItem
+                      className="flex-1 text-sm cursor-pointer"
+                      onClick={() => {
+                        localStorage.setItem("workspace", w.id!);
+                        dispatch(setWorkspace(w));
+                      }}
+                    >
+                      {w.name}
+                    </DropdownMenuItem>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="ml-auto p-1">
-                          <MoreHorizontal className="w-4 h-4" />
+                        <button className="p-1 rounded hover:bg-muted transition">
+                          <MoreHorizontal className="h-4 w-4 opacity-70" />
                         </button>
                       </DropdownMenuTrigger>
 
-                      <DropdownMenuContent side="right" align="start">
-                        <DropdownMenuItem>Settings</DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(wrkspc.id!);
-                          }}
-                        >
+                      <DropdownMenuContent side="right" align="start" className="rounded-md shadow-lg">
+                        <DropdownMenuItem onClick={() => setOpenMenu(true)}>Settings</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(w.id!)}>
                           Delete Workspace
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </DropdownMenuItem>
+                  </div>
                 ))}
 
               {workspaces && workspaces?.data?.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="flex items-center justify-center gap-2 py-3 cursor-pointer text-sm font-medium"
+                    className="flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md hover:bg-accent cursor-pointer"
                     onClick={() => setOpen(true)}
                   >
-                    <PlusIcon className="w-4 h-4" />
-                    <span>Add Workspace</span>
+                    <PlusIcon className="h-4 w-4" /> Add Workspace
                   </DropdownMenuItem>
                 </>
               )}
 
               {workspaces?.data?.length === 0 && (
-                <div className="flex flex-col items-center justify-center text-center text-xs p-6 gap-2">
-                  <p className="italic text-gray-500">No workspaces yet!</p>
-                  <p
-                    className="underline italic cursor-pointer hover:text-gray-700 transition"
-                    onClick={() => setOpen(true)}
-                  >
-                    Click here to add your first workspace
+                <div className="flex flex-col items-center text-center text-xs p-6 gap-2 text-muted-foreground">
+                  <p>No workspaces yet</p>
+                  <p className="underline cursor-pointer" onClick={() => setOpen(true)}>
+                    Create your first workspace
                   </p>
                 </div>
               )}
@@ -206,7 +198,7 @@ export default function ExtSidebarHeader() {
         open={open}
         setOpen={setOpen}
         title="Create Workspace"
-        description="Enter your workspace details here"
+        description="Enter workspace details"
         onCancel={() => setOpen(false)}
         onConfirm={form.handleSubmit(onSubmit)}
         isLoading={isCreating}
@@ -214,15 +206,14 @@ export default function ExtSidebarHeader() {
         <Form {...form}>
           <form>
             <Field>
-              <FieldLabel htmlFor="name">Full Name</FieldLabel>
-
+              <FieldLabel htmlFor="name">Workspace Name</FieldLabel>
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input id="name" type="text" placeholder="John Doe" {...field} />
+                      <Input id="name" type="text" placeholder="Acme Corp" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -231,6 +222,17 @@ export default function ExtSidebarHeader() {
             </Field>
           </form>
         </Form>
+      </DialogModal>
+
+      <DialogModal width="w-[70rem]" open={openMenu} setOpen={setOpenMenu}>
+        <div className="h-full min-h-[40rem] flex">
+          <div className="w-[15rem] h-full">
+            <WorkspaceMenuSidebar />
+          </div>
+          <div className="flex-1 h-full overflow-auto">
+            <ManageUsers workspaceId={workspace?.id!}/>
+          </div>
+        </div>
       </DialogModal>
     </SidebarHeader>
   );

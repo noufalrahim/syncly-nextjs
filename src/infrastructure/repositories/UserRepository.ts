@@ -33,8 +33,27 @@ export class UserRepository implements IUserRepository {
     return await UserModel.findById(id);
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return await UserModel.findOne({email});
+  }
+
   async findByEmailAndPassword(email: string, password: string): Promise<User | null> {
     return await UserModel.findOne({ email, password });
+  }
+
+  async findManyByEmail(keyword: string): Promise<User[]> {
+    try {
+      const regex = new RegExp(keyword, "i");
+      const users = await UserModel.find(
+        { email: { $regex: regex } },
+        {},
+      ).lean();
+
+      return users as unknown as User[];
+    } catch (error: any) {
+      console.error("Error searching users by email:", error);
+      throw new Error(error.message || "Failed to search users by email");
+    }
   }
 
   async update(data: {
