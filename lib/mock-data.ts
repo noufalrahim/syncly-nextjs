@@ -1,8 +1,11 @@
 import type {
+  ChatChannel,
+  ChatMessage,
   Document,
   Goal,
   Label,
   Note,
+  PresenceStatus,
   Project,
   Task,
   User,
@@ -460,6 +463,488 @@ export const GOALS: Goal[] = [
     status: "completed",
     dueDate: iso(-2),
     ownerId: "u3",
+  },
+]
+
+export const USER_PRESENCE: Record<string, PresenceStatus> = {
+  u1: "online",
+  u2: "online",
+  u3: "away",
+  u4: "online",
+  u5: "dnd",
+  u6: "offline",
+}
+
+export const CHAT_CHANNELS: ChatChannel[] = [
+  {
+    id: "ch-general",
+    type: "channel",
+    name: "general",
+    description: "Company-wide announcements and chatter.",
+    memberIds: ["u1", "u2", "u3", "u4", "u5", "u6"],
+    unreadCount: 0,
+  },
+  {
+    id: "ch-design",
+    type: "channel",
+    name: "design",
+    description: "Atlas redesign, design system, and visual exploration.",
+    memberIds: ["u1", "u2", "u4", "u5"],
+    unreadCount: 3,
+  },
+  {
+    id: "ch-engineering",
+    type: "channel",
+    name: "engineering",
+    description: "Engineering discussion, code reviews, infra.",
+    memberIds: ["u1", "u2", "u3", "u6"],
+    unreadCount: 0,
+  },
+  {
+    id: "ch-random",
+    type: "channel",
+    name: "random",
+    description: "Off-topic — memes, music, weekend plans.",
+    memberIds: ["u1", "u2", "u3", "u4", "u5", "u6"],
+    unreadCount: 12,
+  },
+  {
+    id: "ch-announcements",
+    type: "channel",
+    name: "announcements",
+    description: "Read-only updates from leadership.",
+    memberIds: ["u1", "u2", "u3", "u4", "u5", "u6"],
+    unreadCount: 0,
+  },
+  {
+    id: "dm-u2",
+    type: "dm",
+    name: "Jordan Park",
+    memberIds: ["u1", "u2"],
+    unreadCount: 2,
+  },
+  {
+    id: "dm-u3",
+    type: "dm",
+    name: "Sasha Lopez",
+    memberIds: ["u1", "u3"],
+    unreadCount: 0,
+  },
+  {
+    id: "dm-u5",
+    type: "dm",
+    name: "Priya Patel",
+    memberIds: ["u1", "u5"],
+    unreadCount: 0,
+  },
+  {
+    id: "dm-u6",
+    type: "dm",
+    name: "Omar Khalil",
+    memberIds: ["u1", "u6"],
+    unreadCount: 0,
+  },
+]
+
+const minutesAgo = (m: number) => {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - m)
+  return d.toISOString()
+}
+
+const hoursAgo = (h: number, m = 0) => {
+  const d = new Date()
+  d.setHours(d.getHours() - h, d.getMinutes() - m, 0, 0)
+  return d.toISOString()
+}
+
+const daysAgo = (days: number, hour = 10, minute = 0) => {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  d.setHours(hour, minute, 0, 0)
+  return d.toISOString()
+}
+
+export const CHAT_MESSAGES: ChatMessage[] = [
+  // ===== #general =====
+  {
+    id: "m-g-1",
+    channelId: "ch-general",
+    authorId: "u4",
+    body: "Morning team. Coffee machine on 3 is making a noise that can only be described as 'concerned'.",
+    createdAt: daysAgo(1, 9, 12),
+    reactions: [{ emoji: "☕", userIds: ["u1", "u2", "u5"] }],
+  },
+  {
+    id: "m-g-2",
+    channelId: "ch-general",
+    authorId: "u2",
+    body: "Confirmed. I am also concerned.",
+    createdAt: daysAgo(1, 9, 14),
+    reactions: [{ emoji: "😂", userIds: ["u4", "u1"] }],
+  },
+  {
+    id: "m-g-3",
+    channelId: "ch-general",
+    authorId: "u5",
+    body: "Reminder: All-hands at 2pm. Maya is showing off the new dashboard.",
+    createdAt: daysAgo(1, 11, 30),
+    reactions: [],
+  },
+  {
+    id: "m-g-4",
+    channelId: "ch-general",
+    authorId: "u1",
+    body: "Slides are 90% there. Anyone want to dry-run with me at 1:30?",
+    createdAt: daysAgo(1, 11, 32),
+    reactions: [{ emoji: "🙋", userIds: ["u2"] }],
+  },
+  {
+    id: "m-g-5",
+    channelId: "ch-general",
+    authorId: "u2",
+    body: "Me. I'll bring snacks.",
+    createdAt: daysAgo(1, 11, 33),
+    reactions: [{ emoji: "🍪", userIds: ["u1", "u4", "u5"] }],
+  },
+  {
+    id: "m-g-6",
+    channelId: "ch-general",
+    authorId: "u3",
+    body: "Heads up — pushing a small auth fix to staging in ~10. Should be transparent but ping me if anything looks off.",
+    createdAt: hoursAgo(4),
+    reactions: [{ emoji: "👀", userIds: ["u6"] }],
+  },
+  {
+    id: "m-g-7",
+    channelId: "ch-general",
+    authorId: "u6",
+    body: "Watching.",
+    createdAt: hoursAgo(3, 55),
+    reactions: [],
+  },
+  {
+    id: "m-g-8",
+    channelId: "ch-general",
+    authorId: "u3",
+    body: "All green. Thanks!",
+    createdAt: hoursAgo(3, 30),
+    reactions: [{ emoji: "✅", userIds: ["u1", "u2", "u6"] }],
+  },
+
+  // ===== #design =====
+  {
+    id: "m-d-1",
+    channelId: "ch-design",
+    authorId: "u1",
+    body: "Posted two density variants of the dashboard in Figma. Comfortable vs Compact. Curious which feels right at a glance.",
+    createdAt: daysAgo(1, 14, 5),
+    reactions: [{ emoji: "🔥", userIds: ["u2", "u4"] }],
+  },
+  {
+    id: "m-d-2",
+    channelId: "ch-design",
+    authorId: "u4",
+    body: "Compact is gorgeous but I worry about the secondary metric labels at small sizes. Have you tried bumping them to 12 with a subtle weight increase?",
+    createdAt: daysAgo(1, 14, 18),
+    reactions: [],
+  },
+  {
+    id: "m-d-3",
+    channelId: "ch-design",
+    authorId: "u1",
+    body: "Good shout. I'll spin a v3 with that tweak tonight.",
+    createdAt: daysAgo(1, 14, 22),
+    reactions: [{ emoji: "🙏", userIds: ["u4"] }],
+  },
+  {
+    id: "m-d-4",
+    channelId: "ch-design",
+    authorId: "u2",
+    body: "From an eng perspective: compact is fine if the chart legend wraps cleanly under 360px. Otherwise we'll need a fallback.",
+    createdAt: daysAgo(1, 14, 40),
+    reactions: [],
+  },
+  {
+    id: "m-d-5",
+    channelId: "ch-design",
+    authorId: "u5",
+    body: "Marketing perspective: the comfortable one screenshots better for blog posts and pricing pages. Just FYI.",
+    createdAt: hoursAgo(20),
+    reactions: [{ emoji: "💯", userIds: ["u1"] }],
+  },
+  {
+    id: "m-d-6",
+    channelId: "ch-design",
+    authorId: "u1",
+    body: "Could we ship Comfortable as default and Compact as a preference? Keeps everyone happy.",
+    createdAt: hoursAgo(2),
+    reactions: [{ emoji: "👍", userIds: ["u2", "u4", "u5"] }],
+  },
+  {
+    id: "m-d-7",
+    channelId: "ch-design",
+    authorId: "u4",
+    body: "Vote: yes. Ships in 4.22?",
+    createdAt: minutesAgo(45),
+    reactions: [{ emoji: "🚀", userIds: ["u1"] }],
+  },
+  {
+    id: "m-d-8",
+    channelId: "ch-design",
+    authorId: "u1",
+    body: "Targeting 4.22 if QA cooperates. Will sync in standup.",
+    createdAt: minutesAgo(28),
+    reactions: [],
+  },
+
+  // ===== #engineering =====
+  {
+    id: "m-e-1",
+    channelId: "ch-engineering",
+    authorId: "u3",
+    body: "Anyone seeing intermittent 502s on the staging cluster? Started about 20 mins ago.",
+    createdAt: hoursAgo(8),
+    reactions: [],
+  },
+  {
+    id: "m-e-2",
+    channelId: "ch-engineering",
+    authorId: "u6",
+    body: "Yep. Looks like the load balancer healthcheck is too aggressive after the last deploy. Bumping the timeout.",
+    createdAt: hoursAgo(7, 50),
+    reactions: [{ emoji: "🔧", userIds: ["u3"] }],
+  },
+  {
+    id: "m-e-3",
+    channelId: "ch-engineering",
+    authorId: "u3",
+    body: "Confirmed fixed on my end. Thanks Omar.",
+    createdAt: hoursAgo(7, 35),
+    reactions: [{ emoji: "🙌", userIds: ["u6"] }],
+  },
+  {
+    id: "m-e-4",
+    channelId: "ch-engineering",
+    authorId: "u2",
+    body: "PR up for the Safari redirect loop. Root cause was exactly the SameSite=Lax thing — sub-domain set was missing the parent. https://github.com/atlas/web/pull/4821",
+    createdAt: hoursAgo(5, 12),
+    reactions: [{ emoji: "🥳", userIds: ["u1", "u3"] }],
+  },
+  {
+    id: "m-e-5",
+    channelId: "ch-engineering",
+    authorId: "u1",
+    body: "Reviewing now. Will leave comments inline.",
+    createdAt: hoursAgo(5, 9),
+    reactions: [],
+  },
+  {
+    id: "m-e-6",
+    channelId: "ch-engineering",
+    authorId: "u3",
+    body: "Drive-by: can we add an integration test that boots Safari TP in CI? Would've caught this.",
+    createdAt: hoursAgo(4, 55),
+    reactions: [{ emoji: "💡", userIds: ["u2", "u6"] }],
+  },
+  {
+    id: "m-e-7",
+    channelId: "ch-engineering",
+    authorId: "u2",
+    body: "Filed a ticket: ATLAS-2391. Will pick up after the redirect fix lands.",
+    createdAt: hoursAgo(4, 50),
+    reactions: [],
+  },
+  {
+    id: "m-e-8",
+    channelId: "ch-engineering",
+    authorId: "u6",
+    body: "Realtime presence spike progress: cursor positions are flowing through the WS layer. Need to figure out coalescing before this scales past ~50 users.",
+    createdAt: minutesAgo(70),
+    reactions: [{ emoji: "👀", userIds: ["u1", "u3"] }],
+  },
+  {
+    id: "m-e-9",
+    channelId: "ch-engineering",
+    authorId: "u1",
+    body: "Have you looked at how Linear does it? They throttle to 30hz and it feels great.",
+    createdAt: minutesAgo(64),
+    reactions: [],
+  },
+  {
+    id: "m-e-10",
+    channelId: "ch-engineering",
+    authorId: "u6",
+    body: "Yeah, leaning that way. Will write up the approach in an RFC tomorrow.",
+    createdAt: minutesAgo(60),
+    reactions: [{ emoji: "📄", userIds: ["u1"] }],
+  },
+
+  // ===== #random =====
+  {
+    id: "m-r-1",
+    channelId: "ch-random",
+    authorId: "u5",
+    body: "What is everyone listening to while shipping today?",
+    createdAt: hoursAgo(6),
+    reactions: [],
+  },
+  {
+    id: "m-r-2",
+    channelId: "ch-random",
+    authorId: "u4",
+    body: "Lo-fi beats and the gentle hum of regret.",
+    createdAt: hoursAgo(5, 55),
+    reactions: [{ emoji: "😂", userIds: ["u1", "u2", "u5", "u3"] }],
+  },
+  {
+    id: "m-r-3",
+    channelId: "ch-random",
+    authorId: "u3",
+    body: "Hans Zimmer's Interstellar score. On loop. For the third week.",
+    createdAt: hoursAgo(5, 50),
+    reactions: [{ emoji: "🪐", userIds: ["u4"] }],
+  },
+  {
+    id: "m-r-4",
+    channelId: "ch-random",
+    authorId: "u2",
+    body: "Dad rock. Strictly dad rock.",
+    createdAt: hoursAgo(5, 45),
+    reactions: [{ emoji: "🎸", userIds: ["u5", "u4"] }],
+  },
+  {
+    id: "m-r-5",
+    channelId: "ch-random",
+    authorId: "u6",
+    body: "Silence. Bug fixing requires reverence.",
+    createdAt: hoursAgo(2),
+    reactions: [{ emoji: "🤫", userIds: ["u1", "u3"] }],
+  },
+  {
+    id: "m-r-6",
+    channelId: "ch-random",
+    authorId: "u1",
+    body: "I made a 4-hour playlist called 'Atlas Redesign' and refuse to take suggestions.",
+    createdAt: minutesAgo(120),
+    reactions: [{ emoji: "🎧", userIds: ["u4", "u2", "u5"] }],
+  },
+
+  // ===== #announcements =====
+  {
+    id: "m-a-1",
+    channelId: "ch-announcements",
+    authorId: "u5",
+    body: "We crossed **5,000 active workspaces** this week. Huge milestone — thank you everyone for the work going in.",
+    createdAt: daysAgo(2, 16, 0),
+    reactions: [
+      { emoji: "🎉", userIds: ["u1", "u2", "u3", "u4", "u6"] },
+      { emoji: "🚀", userIds: ["u1", "u3"] },
+    ],
+  },
+  {
+    id: "m-a-2",
+    channelId: "ch-announcements",
+    authorId: "u5",
+    body: "Office will be closed next Monday for the company offsite. Travel details in your inbox.",
+    createdAt: daysAgo(1, 17, 30),
+    reactions: [{ emoji: "🏝", userIds: ["u4", "u2", "u1", "u6"] }],
+  },
+
+  // ===== DM with Jordan (u2) =====
+  {
+    id: "m-dm2-1",
+    channelId: "dm-u2",
+    authorId: "u2",
+    body: "Hey, did you get a chance to look at the staging build? I want to make sure the Safari fix didn't regress anything.",
+    createdAt: hoursAgo(3),
+    reactions: [],
+  },
+  {
+    id: "m-dm2-2",
+    channelId: "dm-u2",
+    authorId: "u1",
+    body: "Just clicked through the main flows — looks clean. Login, dashboard, settings all good.",
+    createdAt: hoursAgo(2, 50),
+    reactions: [{ emoji: "🙌", userIds: ["u2"] }],
+  },
+  {
+    id: "m-dm2-3",
+    channelId: "dm-u2",
+    authorId: "u2",
+    body: "Perfect. Mind giving the PR a quick approval when you have a sec?",
+    createdAt: minutesAgo(35),
+    reactions: [],
+  },
+  {
+    id: "m-dm2-4",
+    channelId: "dm-u2",
+    authorId: "u2",
+    body: "Also — are you still up for the dry-run at 1:30?",
+    createdAt: minutesAgo(8),
+    reactions: [],
+  },
+
+  // ===== DM with Sasha (u3) =====
+  {
+    id: "m-dm3-1",
+    channelId: "dm-u3",
+    authorId: "u1",
+    body: "Quick one: what's the timeline looking like on the edge auth migration? Trying to plan around it.",
+    createdAt: hoursAgo(20),
+    reactions: [],
+  },
+  {
+    id: "m-dm3-2",
+    channelId: "dm-u3",
+    authorId: "u3",
+    body: "Realistically? Two more weeks. Infra capacity planning got us, but we're unblocked now.",
+    createdAt: hoursAgo(19, 50),
+    reactions: [],
+  },
+  {
+    id: "m-dm3-3",
+    channelId: "dm-u3",
+    authorId: "u1",
+    body: "Got it. I'll plan the dashboard rollout to land after, then.",
+    createdAt: hoursAgo(19, 45),
+    reactions: [{ emoji: "👍", userIds: ["u3"] }],
+  },
+
+  // ===== DM with Priya (u5) =====
+  {
+    id: "m-dm5-1",
+    channelId: "dm-u5",
+    authorId: "u5",
+    body: "Pricing copy is in the doc. I left two options for the headline — would love your gut reaction.",
+    createdAt: hoursAgo(7),
+    reactions: [],
+  },
+  {
+    id: "m-dm5-2",
+    channelId: "dm-u5",
+    authorId: "u1",
+    body: "Option B. The verb makes it feel more active.",
+    createdAt: hoursAgo(6, 30),
+    reactions: [{ emoji: "🎯", userIds: ["u5"] }],
+  },
+
+  // ===== DM with Omar (u6) =====
+  {
+    id: "m-dm6-1",
+    channelId: "dm-u6",
+    authorId: "u6",
+    body: "Sending you the WS coalescing RFC tomorrow morning. Want you in the room when we discuss.",
+    createdAt: hoursAgo(1, 30),
+    reactions: [],
+  },
+  {
+    id: "m-dm6-2",
+    channelId: "dm-u6",
+    authorId: "u1",
+    body: "Wouldn't miss it.",
+    createdAt: hoursAgo(1, 28),
+    reactions: [],
   },
 ]
 

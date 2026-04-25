@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import {
+  CHAT_CHANNELS,
+  CHAT_MESSAGES,
   CURRENT_USER_ID,
   DOCUMENTS,
   GOALS,
@@ -12,6 +14,8 @@ import {
   USERS,
 } from "./mock-data"
 import type {
+  ChatChannel,
+  ChatMessage,
   Comment,
   Document as Doc,
   Goal,
@@ -44,6 +48,9 @@ type State = {
   selectedTaskId: string | null
   // Board columns include the standard 5 plus any user-added ones
   columns: ColumnDef[]
+  channels: ChatChannel[]
+  messages: ChatMessage[]
+  activeChannelId: string
 }
 
 type Action =
@@ -61,6 +68,9 @@ type Action =
   | { type: "ADD_NOTE" }
   | { type: "DELETE_NOTE"; noteId: string }
   | { type: "UPDATE_NOTE"; noteId: string; patch: Partial<Note> }
+  | { type: "SELECT_CHANNEL"; channelId: string }
+  | { type: "SEND_MESSAGE"; channelId: string; body: string }
+  | { type: "TOGGLE_REACTION"; messageId: string; emoji: string }
 
 const initialState: State = {
   users: USERS,
@@ -82,6 +92,9 @@ const initialState: State = {
     { id: "col-in-progress", status: "in-progress", label: "In Progress" },
     { id: "col-done", status: "done", label: "Done" },
   ],
+  channels: CHAT_CHANNELS,
+  messages: CHAT_MESSAGES,
+  activeChannelId: "ch-general",
 }
 
 function reducer(state: State, action: Action): State {
@@ -185,6 +198,57 @@ function reducer(state: State, action: Action): State {
             ? { ...n, ...action.patch, updatedAt: new Date().toISOString() }
             : n,
         ),
+      }
+    }
+    case "SELECT_CHANNEL": {
+      return {
+        ...state,
+        activeChannelId: action.channelId,
+        // mark as read
+        channels: state.channels.map((c) =>
+          c.id === action.channelId ? { ...c, unreadCount: 0 } : c,
+        ),
+      }
+    }
+    case "SEND_MESSAGE": {
+      const trimmed = action.body.trim()
+      if (!trimmed) return state
+      const msg: ChatMessage = {
+        id: `m-${Date.now()}`,
+        channelId: action.channelId,
+        authorId: state.currentUserId,
+        body: trimmed,
+        createdAt: new Date().toISOString(),
+        reactions: [],
+      }
+      return { ...state, messages: [...state.messages, msg] }
+    }
+    case "TOGGLE_REACTION": {
+      return {
+        ...state,
+        messages: state.messages.map((m) => {
+          if (m.id !== action.messageId) return m
+          const existing = m.reactions.find((r) => r.emoji === action.emoji)
+          if (!existing) {
+            return {
+              ...m,
+              reactions: [
+                ...m.reactions,
+                { emoji: action.emoji, userIds: [state.currentUserId] },
+              ],
+            }
+          }
+          const has = existing.userIds.includes(state.currentUserId)
+          const nextUserIds = has
+            ? existing.userIds.filter((id) => id !== state.currentUserId)
+            : [...existing.userIds, state.currentUserId]
+          const nextReactions = nextUserIds.length
+            ? m.reactions.map((r) =>
+                r.emoji === action.emoji ? { ...r, userIds: nextUserIds } : r,
+              )
+            : m.reactions.filter((r) => r.emoji !== action.emoji)
+          return { ...m, reactions: nextReactions }
+        }),
       }
     }
     default:

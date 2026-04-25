@@ -6,6 +6,7 @@ import {
   CheckSquare,
   FileText,
   FolderOpen,
+  MessageSquare,
   Target,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -19,11 +20,14 @@ const MODULES: { id: ModuleId; label: string; icon: React.ReactNode }[] = [
   { id: "documents", label: "Documents", icon: <FolderOpen className="h-4 w-4" /> },
   { id: "goals", label: "Goals", icon: <Target className="h-4 w-4" /> },
   { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
+  { id: "chat", label: "Chat", icon: <MessageSquare className="h-4 w-4" /> },
 ]
 
 export function ModuleNav() {
-  const { module } = useWorkspace()
+  const { module, channels } = useWorkspace()
   const dispatch = useDispatch()
+
+  const chatUnread = channels.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
 
   return (
     <div
@@ -33,6 +37,7 @@ export function ModuleNav() {
     >
       {MODULES.map((m) => {
         const active = m.id === module
+        const showBadge = m.id === "chat" && chatUnread > 0
         return (
           <button
             key={m.id}
@@ -49,6 +54,14 @@ export function ModuleNav() {
           >
             {m.icon}
             {m.label}
+            {showBadge && (
+              <span
+                aria-label={`${chatUnread} unread messages`}
+                className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums"
+              >
+                {chatUnread > 99 ? "99+" : chatUnread}
+              </span>
+            )}
             <span
               className={cn(
                 "absolute bottom-0 left-2 right-2 h-0.5 rounded-full transition-colors",

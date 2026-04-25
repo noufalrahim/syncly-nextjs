@@ -5,6 +5,7 @@ import { ModuleNav } from "./module-nav"
 import { TopHeader } from "./top-header"
 import { AnalyticsModule } from "./modules/analytics-module"
 import { CalendarModule } from "./modules/calendar-module"
+import { ChatModule } from "./modules/chat/chat-module"
 import { DocumentsModule } from "./modules/documents-module"
 import { GoalsModule } from "./modules/goals-module"
 import { NotesModule } from "./modules/notes-module"
@@ -31,6 +32,7 @@ export function AppShell() {
         {module === "documents" && <DocumentsModule />}
         {module === "goals" && <GoalsModule />}
         {module === "analytics" && <AnalyticsModule />}
+        {module === "chat" && <ChatModule />}
       </main>
 
       {selectedTaskId && <TaskDetailsPanel />}

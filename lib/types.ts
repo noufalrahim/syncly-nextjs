@@ -107,6 +107,35 @@ export type ModuleId =
   | "documents"
   | "goals"
   | "analytics"
+  | "chat"
+
+export type PresenceStatus = "online" | "away" | "dnd" | "offline"
+
+export type ChatChannelType = "channel" | "dm"
+
+export type ChatChannel = {
+  id: string
+  type: ChatChannelType
+  name: string // for DMs this is the other user's name (for search), but we still render via memberIds
+  description?: string
+  memberIds: string[]
+  unreadCount: number
+}
+
+export type ChatReaction = {
+  emoji: string
+  userIds: string[]
+}
+
+export type ChatMessage = {
+  id: string
+  channelId: string
+  authorId: string
+  body: string
+  createdAt: string // ISO
+  reactions: ChatReaction[]
+  edited?: boolean
+}
 
 export type TaskView = "board" | "table" | "list" | "gantt" | "calendar"
 
