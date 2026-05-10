@@ -38,3 +38,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { projectId, patch } = await request.json();
+
+    if (!projectId) {
+      return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const project = await Project.findByIdAndUpdate(projectId, patch, { new: true });
+
+    return NextResponse.json({ project }, { status: 200 });
+  } catch (error) {
+    console.error("Update project error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get("projectId");
+
+    if (!projectId) {
+      return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    await Project.findByIdAndDelete(projectId);
+
+    return NextResponse.json({ message: "Project deleted successfully" }, { status: 200 });
+  } catch (error) {
+    console.error("Delete project error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}

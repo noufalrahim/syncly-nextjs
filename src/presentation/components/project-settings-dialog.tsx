@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, MoreHorizontal, Loader2 } from "lucide-react"
 import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace, useProjectColumns } from "@/presentation/state/workspace-store"
 import {
@@ -38,6 +38,8 @@ export function ProjectSettingsDialog({
   const [isPickerOpen, setIsPickerOpen] = React.useState(false)
   const [deleteConfirm, setDeleteConfirm] = React.useState("")
   const [localColumns, setLocalColumns] = React.useState<any[]>([])
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   React.useEffect(() => {
     if (project) {
@@ -65,20 +67,30 @@ export function ProjectSettingsDialog({
 
   const handleSaveGeneral = async () => {
     if (!projectName.trim()) return
-    dispatch({ type: "UPDATE_PROJECT", projectId: project.id, patch: { name: projectName.trim(), emoji: projectEmoji } })
-    await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, patch: { name: projectName.trim(), emoji: projectEmoji } })
-    })
+    setIsSaving(true)
+    try {
+      dispatch({ type: "UPDATE_PROJECT", projectId: project.id, patch: { name: projectName.trim(), emoji: projectEmoji } })
+      await fetch("/api/projects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, patch: { name: projectName.trim(), emoji: projectEmoji } })
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleDeleteProject = async () => {
     if (deleteConfirm !== project.name) return
-    dispatch({ type: "DELETE_PROJECT", projectId: project.id })
-    dispatch({ type: "SELECT_PROJECT", projectId: null })
-    await fetch(`/api/projects?projectId=${project.id}`, { method: "DELETE" })
-    onOpenChange(false)
+    setIsDeleting(true)
+    try {
+      dispatch({ type: "DELETE_PROJECT", projectId: project.id })
+      dispatch({ type: "SELECT_PROJECT", projectId: null })
+      await fetch(`/api/projects?projectId=${project.id}`, { method: "DELETE" })
+      onOpenChange(false)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleDeleteColumn = async (colId: string) => {
@@ -188,7 +200,16 @@ export function ProjectSettingsDialog({
                       </div>
                     </div>
                     <div className="pt-2">
-                      <Button onClick={handleSaveGeneral} size="lg">Save Changes</Button>
+                      <Button onClick={handleSaveGeneral} size="lg" disabled={isSaving}>
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -325,11 +346,20 @@ export function ProjectSettingsDialog({
                     <Button 
                       variant="destructive" 
                       size="lg"
-                      disabled={deleteConfirm !== project.name}
+                      disabled={deleteConfirm !== project.name || isDeleting}
                       onClick={handleDeleteProject}
                       className="w-full sm:w-auto px-10 shadow-lg shadow-destructive/20"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

@@ -15,7 +15,7 @@ import { Label } from "@/presentation/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
 import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
 import EmojiPicker, { Theme } from "emoji-picker-react"
-import { Plus } from "lucide-react"
+import { Plus, Loader2 } from "lucide-react"
 import { useTheme } from "next-themes"
 
 interface AddProjectDialogProps {
@@ -33,6 +33,7 @@ export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) 
   const [emoji, setEmoji] = React.useState(EMOJIS[0])
   const [isMainPickerOpen, setIsMainPickerOpen] = React.useState(false)
   const [isPlusPickerOpen, setIsPlusPickerOpen] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(false)
   const { activeWorkspaceId } = useWorkspace()
   const { theme } = useTheme()
   const dispatch = useDispatch()
@@ -41,6 +42,7 @@ export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) 
     e.preventDefault()
     if (!name.trim() || !activeWorkspaceId) return
 
+    setIsLoading(true)
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
@@ -71,6 +73,8 @@ export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) 
       }
     } catch (error) {
       console.error("Create project error:", error);
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -162,8 +166,15 @@ export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) 
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim()} className="h-11 px-8 font-semibold shadow-lg shadow-primary/20">
-              Create Project
+            <Button type="submit" disabled={!name.trim() || isLoading} className="h-11 px-8 font-semibold shadow-lg shadow-primary/20">
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Project"
+              )}
             </Button>
           </div>
         </form>
