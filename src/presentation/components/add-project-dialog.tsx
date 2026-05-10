@@ -12,7 +12,11 @@ import {
 import { Button } from "@/presentation/components/ui/button"
 import { Input } from "@/presentation/components/ui/input"
 import { Label } from "@/presentation/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
 import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
+import EmojiPicker, { Theme } from "emoji-picker-react"
+import { Plus } from "lucide-react"
+import { useTheme } from "next-themes"
 
 interface AddProjectDialogProps {
   open: boolean
@@ -27,7 +31,10 @@ const EMOJIS = [
 export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) {
   const [name, setName] = React.useState("")
   const [emoji, setEmoji] = React.useState(EMOJIS[0])
+  const [isMainPickerOpen, setIsMainPickerOpen] = React.useState(false)
+  const [isPlusPickerOpen, setIsPlusPickerOpen] = React.useState(false)
   const { activeWorkspaceId } = useWorkspace()
+  const { theme } = useTheme()
   const dispatch = useDispatch()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,9 +84,26 @@ export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) 
         <form onSubmit={handleSubmit} className="p-6 pt-4 space-y-6">
           <div className="flex items-center gap-4">
             <div className="relative group">
-              <div className="h-16 w-16 flex items-center justify-center rounded-2xl bg-muted/50 border-2 border-dashed border-border group-hover:border-primary/50 transition-colors text-3xl">
-                {emoji}
-              </div>
+              <Popover open={isMainPickerOpen} onOpenChange={setIsMainPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button 
+                    type="button"
+                    className="h-16 w-16 flex items-center justify-center rounded-2xl bg-muted/50 border-2 border-dashed border-border group-hover:border-primary/50 transition-colors text-3xl hover:bg-muted/80"
+                  >
+                    {emoji}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 border-none shadow-2xl z-[100]" side="right" align="start">
+                  <EmojiPicker
+                    onEmojiClick={(emojiData) => {
+                      setEmoji(emojiData.emoji)
+                      setIsMainPickerOpen(false)
+                    }}
+                    theme={theme === "dark" ? Theme.DARK : Theme.LIGHT}
+                    lazyLoadEmojis={true}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex-1 space-y-2">
               <Label htmlFor="name" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Project Name</Label>
@@ -111,6 +135,26 @@ export function AddProjectDialog({ open, onOpenChange }: AddProjectDialogProps) 
                   {e}
                 </button>
               ))}
+              <Popover open={isPlusPickerOpen} onOpenChange={setIsPlusPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-12 w-12 flex items-center justify-center rounded-xl bg-muted/30 hover:bg-muted/60 text-muted-foreground hover:scale-105 transition-all duration-200 border-2 border-dashed border-border hover:border-primary/50"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 border-none shadow-2xl z-[100]" side="bottom" align="center">
+                  <EmojiPicker
+                    onEmojiClick={(emojiData) => {
+                      setEmoji(emojiData.emoji)
+                      setIsPlusPickerOpen(false)
+                    }}
+                    theme={theme === "dark" ? Theme.DARK : Theme.LIGHT}
+                    lazyLoadEmojis={true}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

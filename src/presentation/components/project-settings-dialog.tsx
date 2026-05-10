@@ -12,6 +12,9 @@ import { Input } from "@/presentation/components/ui/input"
 import { Label } from "@/presentation/components/ui/label"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import type { Project } from "@/domain/types"
+import EmojiPicker, { Theme } from "emoji-picker-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
+import { useTheme } from "next-themes"
 
 export function ProjectSettingsDialog({
   open,
@@ -23,6 +26,7 @@ export function ProjectSettingsDialog({
   projectId: string | null
 }) {
   const { projects, users, tags } = useWorkspace()
+  const { theme } = useTheme()
   const dispatch = useDispatch()
   const project = projects.find(p => p.id === projectId)
   const columns = useProjectColumns()
@@ -31,6 +35,7 @@ export function ProjectSettingsDialog({
 
   const [projectName, setProjectName] = React.useState("")
   const [projectEmoji, setProjectEmoji] = React.useState("")
+  const [isPickerOpen, setIsPickerOpen] = React.useState(false)
   const [deleteConfirm, setDeleteConfirm] = React.useState("")
   const [localColumns, setLocalColumns] = React.useState<any[]>([])
 
@@ -152,11 +157,26 @@ export function ProjectSettingsDialog({
                     <div className="grid grid-cols-[120px_1fr] gap-8">
                       <div className="space-y-2">
                         <Label>Emoji</Label>
-                        <Input 
-                          value={projectEmoji} 
-                          onChange={(e) => setProjectEmoji(e.target.value)} 
-                          className="text-center text-2xl h-14"
-                        />
+                        <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              className="w-full text-2xl h-14 bg-background border-border/50 hover:border-primary/30 transition-all shadow-sm"
+                            >
+                              {projectEmoji || "🚀"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 border-none shadow-2xl" side="bottom" align="start">
+                            <EmojiPicker
+                              onEmojiClick={(emojiData) => {
+                                setProjectEmoji(emojiData.emoji)
+                                setIsPickerOpen(false)
+                              }}
+                              theme={theme === "dark" ? Theme.DARK : Theme.LIGHT}
+                              lazyLoadEmojis={true}
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <div className="space-y-2">
                         <Label>Project Name</Label>
