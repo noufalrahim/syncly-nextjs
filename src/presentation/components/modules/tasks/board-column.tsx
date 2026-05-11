@@ -6,9 +6,10 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Plus, Trash2, MoreHorizontal, Edit2 } from "lucide-react"
 import { cn } from "@/core/utils"
 import { type Task, type TaskStatus } from "@/domain/types"
-import { TaskCard } from "./task-card"
+import { TaskCard, TaskCardSkeleton } from "./task-card"
 import { QuickAddTask } from "./quick-add-task"
 import { useDispatch } from "@/presentation/state/workspace-store"
+import { Skeleton } from "@/presentation/components/ui/skeleton"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -235,5 +236,24 @@ export function BoardColumn({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+export function BoardColumnSkeleton() {
+  return (
+    <div className="flex flex-col w-72 shrink-0">
+      <div className="flex items-center justify-between px-2 mb-2 h-8">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-2 w-2 rounded-full" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-6" />
+        </div>
+      </div>
+      <div className="flex-1 rounded-lg p-1.5 space-y-2 border border-transparent">
+        <TaskCardSkeleton />
+        <TaskCardSkeleton />
+        <TaskCardSkeleton />
+      </div>
+    </div>
   )
 }

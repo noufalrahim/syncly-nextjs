@@ -4,7 +4,8 @@ import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/core/utils"
 import { STATUS_META, type Task } from "@/domain/types"
-import { useDispatch, useProjectTasks } from "@/presentation/state/workspace-store"
+import { useDispatch, useProjectTasks, useWorkspace } from "@/presentation/state/workspace-store"
+import { Skeleton } from "@/presentation/components/ui/skeleton"
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -26,6 +27,7 @@ function buildMonthGrid(viewDate: Date) {
 
 export function TaskCalendarView() {
   const tasks = useProjectTasks()
+  const { loading } = useWorkspace()
   const dispatch = useDispatch()
   const [viewDate, setViewDate] = React.useState(() => {
     const d = new Date()
@@ -144,24 +146,33 @@ export function TaskCalendarView() {
                   {d.getDate()}
                 </span>
                 <div className="flex-1 space-y-0.5 overflow-hidden">
-                  {dayTasks.slice(0, 3).map((t) => {
-                    const meta = STATUS_META[t.status]
-                    return (
-                      <div
-                        key={t.id}
-                        className={cn(
-                          "text-[10px] px-1.5 py-0.5 rounded truncate border",
-                          meta.badge,
-                        )}
-                      >
-                        {t.title}
-                      </div>
-                    )
-                  })}
-                  {dayTasks.length > 3 && (
-                    <div className="text-[10px] text-muted-foreground px-1">
-                      +{dayTasks.length - 3} more
-                    </div>
+                  {loading.tasks ? (
+                    <>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-4/5" />
+                    </>
+                  ) : (
+                    <>
+                      {dayTasks.slice(0, 3).map((t) => {
+                        const meta = STATUS_META[t.status]
+                        return (
+                          <div
+                            key={t.id}
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded truncate border",
+                              meta.badge,
+                            )}
+                          >
+                            {t.title}
+                          </div>
+                        )
+                      })}
+                      {dayTasks.length > 3 && (
+                        <div className="text-[10px] text-muted-foreground px-1">
+                          +{dayTasks.length - 3} more
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </button>

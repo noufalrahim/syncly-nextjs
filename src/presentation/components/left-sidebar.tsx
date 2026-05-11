@@ -12,6 +12,7 @@ import {
   CheckSquare,
   MoreHorizontal
 } from "lucide-react"
+import { Skeleton } from "@/presentation/components/ui/skeleton"
 import { cn } from "@/core/utils"
 import { ProjectSettingsDialog } from "./project-settings-dialog"
 import {
@@ -35,7 +36,8 @@ export function LeftSidebar() {
     currentUserId, 
     users, 
     workspaces, 
-    activeWorkspaceId 
+    activeWorkspaceId,
+    loading 
   } = useWorkspace()
   const projects = useFilteredProjects()
   const dispatch = useDispatch()
@@ -65,12 +67,21 @@ export function LeftSidebar() {
               {activeWorkspace?.name?.[0] || "S"}
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold truncate group-hover:text-sidebar-accent-foreground">
-                {activeWorkspace?.name || "No Workspace"}
-              </span>
-              <span className="block text-[11px] text-muted-foreground truncate uppercase tracking-tight">
-                {activeWorkspace?.plan || "Personal"} Plan
-              </span>
+              {loading.workspaces ? (
+                <>
+                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="h-3 w-16" />
+                </>
+              ) : (
+                <>
+                  <span className="block text-sm font-semibold truncate group-hover:text-sidebar-accent-foreground">
+                    {activeWorkspace?.name || "No Workspace"}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground truncate uppercase tracking-tight">
+                    {activeWorkspace?.plan || "Personal"} Plan
+                  </span>
+                </>
+              )}
             </span>
             <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
@@ -147,6 +158,12 @@ export function LeftSidebar() {
             >
               Add Workspace
             </Button>
+          </div>
+        ) : loading.projects ? (
+          <div className="space-y-1.5 px-2 mt-1">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
           </div>
         ) : (
           <>

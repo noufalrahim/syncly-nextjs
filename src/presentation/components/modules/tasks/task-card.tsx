@@ -9,6 +9,7 @@ import { labelDotClass } from "@/domain/label-colors"
 import { PRIORITY_META, STATUS_META, type Task } from "@/domain/types"
 import { useDispatch, useUser, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
+import { Skeleton } from "@/presentation/components/ui/skeleton"
 
 function formatShortDate(iso: string) {
   const d = new Date(iso)
@@ -203,6 +204,28 @@ export function TaskCard({
             {priority.label}
           </span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+export function TaskCardSkeleton() {
+  return (
+    <div className="bg-card border border-border rounded-lg p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-4" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded-full" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+        <Skeleton className="h-4 w-16" />
       </div>
     </div>
   )

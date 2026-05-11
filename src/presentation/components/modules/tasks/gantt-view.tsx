@@ -3,12 +3,14 @@
 import * as React from "react"
 import { cn } from "@/core/utils"
 import { STATUS_META } from "@/domain/types"
-import { useDispatch, useProjectTasks } from "@/presentation/state/workspace-store"
+import { useDispatch, useProjectTasks, useWorkspace } from "@/presentation/state/workspace-store"
+import { Skeleton } from "@/presentation/components/ui/skeleton"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export function GanttView() {
   const tasks = useProjectTasks()
+  const { loading } = useWorkspace()
   const dispatch = useDispatch()
 
   // Build a 30-day window centered around today
@@ -76,83 +78,96 @@ export function GanttView() {
 
         {/* Rows */}
         <div>
-          {sorted.map((t) => {
-            const start = new Date(t.startDate)
-            start.setHours(0, 0, 0, 0)
-            const end = new Date(t.dueDate)
-            end.setHours(0, 0, 0, 0)
-
-            const offsetDays = Math.round(
-              (start.getTime() - rangeStart.getTime()) / DAY_MS,
-            )
-            const durationDays = Math.max(
-              1,
-              Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1,
-            )
-
-            const status = STATUS_META[t.status]
-            const visible =
-              offsetDays + durationDays > 0 && offsetDays < days.length
-
-            return (
-              <div
-                key={t.id}
-                onClick={() => dispatch({ type: "SELECT_TASK", taskId: t.id })}
-                className="flex border-b border-border hover:bg-accent/20 cursor-pointer transition-colors"
-              >
-                <div className="w-64 shrink-0 px-4 py-2.5 text-sm border-r border-border truncate">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", status.dot)} />
-                    <span className="truncate">{t.title}</span>
-                  </div>
+          {loading.tasks ? (
+            Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="flex border-b border-border h-11 items-center">
+                <div className="w-64 shrink-0 px-4 border-r border-border">
+                  <Skeleton className="h-4 w-4/5" />
                 </div>
-                <div
-                  className="relative h-11"
-                  style={{ width: days.length * cellWidth }}
-                >
-                  {/* Background grid */}
-                  <div className="absolute inset-0 flex">
-                    {days.map((d, i) => {
-                      const isToday = d.getTime() === today.getTime()
-                      const isWeekend = d.getDay() === 0 || d.getDay() === 6
-                      return (
-                        <div
-                          key={i}
-                          style={{ width: cellWidth }}
-                          className={cn(
-                            "shrink-0 border-r border-border/40",
-                            isWeekend && "bg-muted/20",
-                            isToday && "bg-primary/5",
-                          )}
-                        />
-                      )
-                    })}
-                  </div>
-                  {visible && (
-                    <div
-                      className={cn(
-                        "absolute top-1/2 -translate-y-1/2 h-6 rounded-md border flex items-center px-2 text-[11px] font-medium truncate",
-                        status.badge,
-                      )}
-                      style={{
-                        left: Math.max(0, offsetDays) * cellWidth + 2,
-                        width:
-                          Math.min(
-                            durationDays + Math.min(0, offsetDays),
-                            days.length - Math.max(0, offsetDays),
-                          ) *
-                            cellWidth -
-                          4,
-                      }}
-                      title={t.title}
-                    >
-                      {t.title}
-                    </div>
-                  )}
+                <div className="flex-1 px-10">
+                  <Skeleton className="h-6 w-1/3 rounded-md" />
                 </div>
               </div>
-            )
-          })}
+            ))
+          ) : (
+            sorted.map((t) => {
+              const start = new Date(t.startDate)
+              start.setHours(0, 0, 0, 0)
+              const end = new Date(t.dueDate)
+              end.setHours(0, 0, 0, 0)
+
+              const offsetDays = Math.round(
+                (start.getTime() - rangeStart.getTime()) / DAY_MS,
+              )
+              const durationDays = Math.max(
+                1,
+                Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1,
+              )
+
+              const status = STATUS_META[t.status]
+              const visible =
+                offsetDays + durationDays > 0 && offsetDays < days.length
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => dispatch({ type: "SELECT_TASK", taskId: t.id })}
+                  className="flex border-b border-border hover:bg-accent/20 cursor-pointer transition-colors"
+                >
+                  <div className="w-64 shrink-0 px-4 py-2.5 text-sm border-r border-border truncate">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", status.dot)} />
+                      <span className="truncate">{t.title}</span>
+                    </div>
+                  </div>
+                  <div
+                    className="relative h-11"
+                    style={{ width: days.length * cellWidth }}
+                  >
+                    {/* Background grid */}
+                    <div className="absolute inset-0 flex">
+                      {days.map((d, i) => {
+                        const isToday = d.getTime() === today.getTime()
+                        const isWeekend = d.getDay() === 0 || d.getDay() === 6
+                        return (
+                          <div
+                            key={i}
+                            style={{ width: cellWidth }}
+                            className={cn(
+                              "shrink-0 border-r border-border/40",
+                              isWeekend && "bg-muted/20",
+                              isToday && "bg-primary/5",
+                            )}
+                          />
+                        )
+                      })}
+                    </div>
+                    {visible && (
+                      <div
+                        className={cn(
+                          "absolute top-1/2 -translate-y-1/2 h-6 rounded-md border flex items-center px-2 text-[11px] font-medium truncate",
+                          status.badge,
+                        )}
+                        style={{
+                          left: Math.max(0, offsetDays) * cellWidth + 2,
+                          width:
+                            Math.min(
+                              durationDays + Math.min(0, offsetDays),
+                              days.length - Math.max(0, offsetDays),
+                            ) *
+                              cellWidth -
+                            4,
+                        }}
+                        title={t.title}
+                      >
+                        {t.title}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
     </div>

@@ -15,13 +15,13 @@ import { arrayMove } from "@dnd-kit/sortable"
 import { Plus } from "lucide-react"
 import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
 import type { Task, TaskStatus } from "@/domain/types"
-import { BoardColumn } from "./board-column"
+import { BoardColumn, BoardColumnSkeleton } from "./board-column"
 import { TaskCard } from "./task-card"
 
 export function BoardView() {
   const tasks = useProjectTasks()
   const columns = useProjectColumns()
-  const { activeProjectId, projects } = useWorkspace()
+  const { activeProjectId, projects, loading } = useWorkspace()
   const dispatch = useDispatch()
   const [activeTask, setActiveTask] = React.useState<Task | null>(null)
   const [showAddColumn, setShowAddColumn] = React.useState(false)
@@ -226,17 +226,26 @@ export function BoardView() {
       >
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-4 p-4 h-full min-w-max">
-            {columns.map((col) => (
-              <BoardColumn
-                key={col.id}
-                id={col.id}
-                status={col.status}
-                label={col.label}
-                color={col.color}
-                tasks={tasksByColumn[col.id] ?? []}
-                onAddTask={(data) => handleAddTask(col.id, col.status, data)}
-              />
-            ))}
+            {loading.tasks ? (
+              <>
+                <BoardColumnSkeleton />
+                <BoardColumnSkeleton />
+                <BoardColumnSkeleton />
+                <BoardColumnSkeleton />
+              </>
+            ) : (
+              columns.map((col) => (
+                <BoardColumn
+                  key={col.id}
+                  id={col.id}
+                  status={col.status}
+                  label={col.label}
+                  color={col.color}
+                  tasks={tasksByColumn[col.id] ?? []}
+                  onAddTask={(data) => handleAddTask(col.id, col.status, data)}
+                />
+              ))
+            )}
 
             {/* Add column */}
             <div className="w-72 shrink-0 pt-7">

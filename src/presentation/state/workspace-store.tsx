@@ -37,6 +37,13 @@ type State = {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
   activeChannelId: string | null
+  loading: {
+    workspaces: boolean
+    projects: boolean
+    tasks: boolean
+    columns: boolean
+    tags: boolean
+  }
 }
 
 type Action =
@@ -70,6 +77,7 @@ type Action =
   | { type: "SET_COLUMNS"; columns: ColumnDef[] }
   | { type: "SET_TAGS"; tags: Tag[] }
   | { type: "ADD_TAG"; tag: Tag }
+  | { type: "SET_LOADING"; key: keyof State["loading"]; value: boolean }
 
 
 const initialState: State = {
@@ -91,6 +99,13 @@ const initialState: State = {
   activeChannelId: null,
   workspaces: [],
   activeWorkspaceId: null,
+  loading: {
+    workspaces: false,
+    projects: false,
+    tasks: false,
+    columns: false,
+    tags: false,
+  }
 }
 
 function reducer(state: State, action: Action): State {
@@ -297,6 +312,11 @@ function reducer(state: State, action: Action): State {
       return { ...state, tags: action.tags }
     case "ADD_TAG":
       return { ...state, tags: [...state.tags, action.tag] }
+    case "SET_LOADING":
+      return {
+        ...state,
+        loading: { ...state.loading, [action.key]: action.value }
+      }
     default:
       return state
 
@@ -336,6 +356,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!state.currentUserId) return;
 
     const fetchWorkspaces = async () => {
+      dispatch({ type: "SET_LOADING", key: "workspaces", value: true });
       try {
         const res = await fetch(`/api/workspaces?userId=${state.currentUserId}`);
         if (res.ok) {
@@ -350,6 +371,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Failed to fetch workspaces", e);
+      } finally {
+        dispatch({ type: "SET_LOADING", key: "workspaces", value: false });
       }
     };
 
@@ -363,6 +386,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
 
     const fetchProjects = async () => {
+      dispatch({ type: "SET_LOADING", key: "projects", value: true });
       try {
         const res = await fetch(`/api/projects?workspaceId=${state.activeWorkspaceId}`);
         if (res.ok) {
@@ -378,6 +402,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Failed to fetch projects", e);
+      } finally {
+        dispatch({ type: "SET_LOADING", key: "projects", value: false });
       }
     };
 
@@ -387,6 +413,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const fetchAllTasks = async () => {
       if (!state.activeWorkspaceId) return;
+      dispatch({ type: "SET_LOADING", key: "tasks", value: true });
       try {
         const res = await fetch(`/api/tasks?workspaceId=${state.activeWorkspaceId}`);
         if (res.ok) {
@@ -399,6 +426,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Failed to fetch all tasks", e);
+      } finally {
+        dispatch({ type: "SET_LOADING", key: "tasks", value: false });
       }
     };
     fetchAllTasks();
@@ -411,6 +440,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
 
     const fetchColumns = async () => {
+      dispatch({ type: "SET_LOADING", key: "columns", value: true });
       try {
         const res = await fetch(`/api/columns?projectId=${state.activeProjectId}`);
         if (res.ok) {
@@ -426,6 +456,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Failed to fetch columns", e);
+      } finally {
+        dispatch({ type: "SET_LOADING", key: "columns", value: false });
       }
     };
 
@@ -436,6 +468,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!state.activeWorkspaceId) return;
 
     const fetchTags = async () => {
+      dispatch({ type: "SET_LOADING", key: "tags", value: true });
       try {
         const res = await fetch(`/api/tags?workspaceId=${state.activeWorkspaceId}`);
         if (res.ok) {
@@ -449,6 +482,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Failed to fetch tags", e);
+      } finally {
+        dispatch({ type: "SET_LOADING", key: "tags", value: false });
       }
     };
 
