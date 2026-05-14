@@ -48,7 +48,7 @@ export function TaskCard({
     isDragging,
   } = useSortable({
     id: task.id,
-    data: { task },
+    data: { type: "task", task },
   })
 
   const style = {

@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import { useDroppable } from "@dnd-kit/core"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { Plus, Trash2, MoreHorizontal, Edit2 } from "lucide-react"
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { Plus, Trash2, MoreHorizontal, Edit2, GripVertical } from "lucide-react"
 import { cn } from "@/core/utils"
 import { type Task, type TaskStatus } from "@/domain/types"
 import { TaskCard, TaskCardSkeleton } from "./task-card"
@@ -66,10 +67,28 @@ export function BoardColumn({
   const [editColor, setEditColor] = React.useState(color)
   const dispatch = useDispatch()
   
-  const { setNodeRef, isOver } = useDroppable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+    data: { type: "column", columnId: id },
+  })
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id,
     data: { status, columnId: id },
   })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
 
   const getDotColor = (c: string) => {
     return COLUMN_COLORS.find((col) => col.id === c)?.hex || "bg-gray-400"
@@ -103,9 +122,20 @@ export function BoardColumn({
 
   return (
     <>
-      <div className="flex flex-col w-72 shrink-0 group/column">
+      <div 
+        ref={setSortableRef}
+        style={style}
+        className="flex flex-col w-72 shrink-0 group/column"
+      >
         <div className="flex items-center justify-between px-2 mb-2 h-8">
           <div className="flex items-center gap-2 min-w-0 flex-1">
+            <button
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
             <span className={cn("h-2 w-2 rounded-full shrink-0", getDotColor(color))} />
             <h2 className="text-sm font-semibold truncate hover:text-primary transition-colors cursor-default">
               {label}
@@ -152,7 +182,7 @@ export function BoardColumn({
         </div>
 
         <div
-          ref={setNodeRef}
+          ref={setDroppableRef}
           className={cn(
             "flex-1 overflow-y-auto min-h-[200px] rounded-lg p-1.5 space-y-2 transition-colors border border-transparent custom-scrollbar",
             isOver && "bg-accent/40 border-dashed border-primary/40",

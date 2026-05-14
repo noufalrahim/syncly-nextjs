@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, MoreHorizontal, Loader2 } from "lucide-react"
+import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, MoreHorizontal, Loader2, GripVertical } from "lucide-react"
 import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace, useProjectColumns } from "@/presentation/state/workspace-store"
 import {
@@ -15,6 +15,78 @@ import type { Project } from "@/domain/types"
 import EmojiPicker, { Theme } from "emoji-picker-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
 import { useTheme } from "next-themes"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+
+function SortableColumnItem({ 
+  col, 
+  onDelete 
+}: { 
+  col: any, 
+  onDelete: (id: string) => void 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: col.id })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg group hover:border-primary/30 transition-colors"
+    >
+      <div className="flex items-center gap-4">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <span className={cn("h-3 w-3 rounded-full shadow-sm")} style={{ backgroundColor: col.color === "gray" ? "#9ca3af" : col.color }} />
+        <span className="text-sm font-semibold">{col.label}</span>
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={() => onDelete(col.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function ProjectSettingsDialog({
   open,
@@ -40,6 +112,13 @@ export function ProjectSettingsDialog({
   const [localColumns, setLocalColumns] = React.useState<any[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   React.useEffect(() => {
     if (project) {
@@ -97,6 +176,34 @@ export function ProjectSettingsDialog({
     dispatch({ type: "DELETE_COLUMN", columnId: colId })
     setLocalColumns(prev => prev.filter(c => c.id !== colId))
     await fetch(`/api/columns?columnId=${colId}`, { method: "DELETE" })
+  }
+
+  const handleColumnDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = localColumns.findIndex(c => c.id === active.id)
+    const newIndex = localColumns.findIndex(c => c.id === over.id)
+    const newColumns = arrayMove(localColumns, oldIndex, newIndex)
+    
+    setLocalColumns(newColumns)
+
+    // Update locally in store
+    newColumns.forEach((col, idx) => {
+      dispatch({ type: "UPDATE_COLUMN", columnId: col.id, patch: { order: idx } })
+    })
+
+    // Persist
+    Promise.all(newColumns.map((col, idx) => 
+      fetch("/api/columns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          columnId: col.id,
+          patch: { order: idx }
+        })
+      })
+    )).catch(err => console.error("Failed to persist column reorder", err))
   }
 
   const TABS = [
@@ -229,26 +336,24 @@ export function ProjectSettingsDialog({
                     </div>
 
                     <div className="space-y-3">
-                      {localColumns.map(col => (
-                        <div key={col.id} className="flex items-center justify-between px-4 py-3 bg-muted/20 border border-border/50 rounded-lg group hover:border-primary/30 transition-colors">
-                          <div className="flex items-center gap-4">
-                            <MoreHorizontal className="h-4 w-4 text-muted-foreground/30 cursor-grab" />
-                            <span className={cn("h-3 w-3 rounded-full shadow-sm")} style={{ backgroundColor: col.color === "gray" ? "#9ca3af" : col.color }} />
-                            <span className="text-sm font-semibold">{col.label}</span>
-                          </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteColumn(col.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleColumnDragEnd}
+                      >
+                        <SortableContext
+                          items={localColumns.map(c => c.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {localColumns.map(col => (
+                            <SortableColumnItem 
+                              key={col.id} 
+                              col={col} 
+                              onDelete={handleDeleteColumn} 
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   </div>
                 </div>

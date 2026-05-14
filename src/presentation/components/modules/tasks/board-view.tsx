@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core"
-import { arrayMove } from "@dnd-kit/sortable"
+import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable"
 import { Plus } from "lucide-react"
 import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
 import type { Task, TaskStatus } from "@/domain/types"
@@ -54,6 +54,38 @@ export function BoardView() {
     const { active, over } = e
     if (!over) return
 
+    // 1. Handle Column Reordering
+    if (active.data.current?.type === "column") {
+      const overColumnId = over.data.current?.columnId
+      if (overColumnId && active.id !== overColumnId) {
+        const oldIndex = columns.findIndex(c => c.id === active.id)
+        const newIndex = columns.findIndex(c => c.id === overColumnId)
+        
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newColumns = arrayMove(columns, oldIndex, newIndex)
+          
+          // Update locally
+          newColumns.forEach((col, idx) => {
+            dispatch({ type: "UPDATE_COLUMN", columnId: col.id, patch: { order: idx } })
+          })
+
+          // Persist
+          Promise.all(newColumns.map((col, idx) => 
+            fetch("/api/columns", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                columnId: col.id,
+                patch: { order: idx }
+              })
+            })
+          )).catch(err => console.error("Failed to persist column reorder", err))
+        }
+      }
+      return
+    }
+
+    // 2. Handle Task Reordering/Moving
     const activeTaskId = String(active.id)
     const overId = String(over.id)
 
@@ -61,11 +93,11 @@ export function BoardView() {
     const activeTaskObj = tasks.find(t => t.id === activeTaskId)
     if (!activeTaskObj) return
 
-    // 1. Dropped over a column directly
+    // 2.1 Dropped over a column directly
     let targetColumnId = over.data.current?.columnId as string | undefined
     let targetIndex = -1
 
-    // 2. Dropped over another task
+    // 2.2 Dropped over another task
     if (!targetColumnId && over.data.current?.task) {
       const overTask = over.data.current.task as Task
       targetColumnId = overTask.columnId
@@ -234,17 +266,22 @@ export function BoardView() {
                 <BoardColumnSkeleton />
               </>
             ) : (
-              columns.map((col) => (
-                <BoardColumn
-                  key={col.id}
-                  id={col.id}
-                  status={col.status}
-                  label={col.label}
-                  color={col.color}
-                  tasks={tasksByColumn[col.id] ?? []}
-                  onAddTask={(data) => handleAddTask(col.id, col.status, data)}
-                />
-              ))
+              <SortableContext
+                items={columns.map(c => c.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {columns.map((col) => (
+                  <BoardColumn
+                    key={col.id}
+                    id={col.id}
+                    status={col.status}
+                    label={col.label}
+                    color={col.color}
+                    tasks={tasksByColumn[col.id] ?? []}
+                    onAddTask={(data) => handleAddTask(col.id, col.status, data)}
+                  />
+                ))}
+              </SortableContext>
             )}
 
             {/* Add column */}

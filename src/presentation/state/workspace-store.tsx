@@ -18,7 +18,14 @@ import type {
   Document as Doc
 } from "@/domain/types"
 
-type ColumnDef = { id: string; status?: TaskStatus; label: string; projectId: string; color?: string }
+type ColumnDef = { 
+  id: string; 
+  status?: TaskStatus; 
+  label: string; 
+  projectId: string; 
+  color?: string;
+  order: number;
+}
 
 type State = {
   users: User[]
@@ -165,7 +172,8 @@ function reducer(state: State, action: Action): State {
             label: action.label, 
             status: "backlog",
             projectId: state.activeProjectId,
-            color: "gray"
+            color: "gray",
+            order: state.columns.length
           },
         ],
       }
@@ -451,6 +459,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             status: c.status,
             projectId: c.projectId,
             color: c.color,
+            order: c.order || 0,
           }));
           dispatch({ type: "SET_COLUMNS", columns: mapped });
         }
@@ -536,6 +545,8 @@ export function useProjectColumns() {
   const { columns, activeProjectId } = useWorkspace()
   return React.useMemo(() => {
     if (!activeProjectId) return []
-    return columns.filter((c) => c.projectId === activeProjectId)
+    return columns
+      .filter((c) => c.projectId === activeProjectId)
+      .sort((a, b) => a.order - b.order)
   }, [columns, activeProjectId])
 }
