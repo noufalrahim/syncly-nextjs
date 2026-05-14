@@ -7,118 +7,246 @@ import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
 
+import { useState } from "react"
+import { GripVertical } from "lucide-react"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+
 function formatDate(iso: string) {
+  if (!iso) return "—"
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   })
 }
 
+const DEFAULT_COLUMNS = [
+  { id: "task", label: "Task" },
+  { id: "status", label: "Status" },
+  { id: "priority", label: "Priority" },
+  { id: "assignee", label: "Assignee" },
+  { id: "project", label: "Project" },
+  { id: "tags", label: "Tags" },
+  { id: "due", label: "Due" },
+]
+
+function SortableHeader({ id, label }: { id: string; label: string }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <th
+      ref={setNodeRef}
+      style={style}
+      className="text-left font-medium px-3 py-2.5 first:pl-4 group relative"
+    >
+      <div className="flex items-center gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+        >
+          <GripVertical size={14} />
+        </button>
+        {label}
+      </div>
+    </th>
+  )
+}
+
 export function TableView() {
   const tasks = useProjectTasks()
-  const columns = useProjectColumns()
+  const projectColumns = useProjectColumns()
   const { users, tags, projects, loading } = useWorkspace()
   const dispatch = useDispatch()
+
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMNS.map(c => c.id))
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  const renderCell = (t: any, columnId: string) => {
+    const status = projectColumns.find(c => c.id === t.columnId)
+    const priority = PRIORITY_META[t.priority]
+    const assignee = users.find((u) => u.id === t.assigneeId)
+    const project = projects.find((p) => p.id === t.projectId)
+    const taskTags = tags.filter((l) => t.labels.includes(l.id))
+
+    const cellClass = "px-3 py-2.5 first:pl-4"
+
+    switch (columnId) {
+      case "task":
+        return (
+          <td key={columnId} className={cn(cellClass, "font-medium max-w-md")}>
+            <div className="truncate">{t.title}</div>
+          </td>
+        )
+      case "status":
+        return (
+          <td key={columnId} className={cellClass}>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+              {status?.label || "Unassigned"}
+            </span>
+          </td>
+        )
+      case "priority":
+        return (
+          <td key={columnId} className={cellClass}>
+            <span
+              className={cn(
+                "inline-flex items-center text-[11px] font-medium px-1.5 py-0.5 rounded border",
+                priority.badge,
+              )}
+            >
+              {priority.label}
+            </span>
+          </td>
+        )
+      case "assignee":
+        return (
+          <td key={columnId} className={cellClass}>
+            <div className="flex items-center gap-2">
+              <UserAvatar user={assignee} size="xs" />
+              <span className="text-muted-foreground truncate">
+                {assignee?.name || "Unassigned"}
+              </span>
+            </div>
+          </td>
+        )
+      case "project":
+        return (
+          <td key={columnId} className={cn(cellClass, "text-muted-foreground")}>
+            {project ? `${project.emoji} ${project.name}` : "—"}
+          </td>
+        )
+      case "tags":
+        return (
+          <td key={columnId} className={cellClass}>
+            <div className="flex flex-wrap gap-1">
+              {taskTags.slice(0, 2).map((l) => (
+                <span
+                  key={l.id}
+                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded"
+                >
+                  <span
+                    className={cn("h-1.5 w-1.5 rounded-full", labelDotClass(l.color))}
+                  />
+                  {l.name}
+                </span>
+              ))}
+              {taskTags.length > 2 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{taskTags.length - 2}
+                </span>
+              )}
+            </div>
+          </td>
+        )
+      case "due":
+        return (
+          <td key={columnId} className={cn(cellClass, "text-muted-foreground whitespace-nowrap")}>
+            {formatDate(t.dueDate)}
+          </td>
+        )
+      default:
+        return <td key={columnId} className={cellClass}>—</td>
+    }
+  }
 
   return (
     <div className="flex-1 overflow-auto p-4">
       <div className="rounded-lg border border-border overflow-hidden bg-card">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-muted-foreground text-xs uppercase tracking-wide">
-            <tr>
-              <th className="text-left font-medium px-4 py-2.5">Task</th>
-              <th className="text-left font-medium px-3 py-2.5">Status</th>
-              <th className="text-left font-medium px-3 py-2.5">Priority</th>
-              <th className="text-left font-medium px-3 py-2.5">Assignee</th>
-              <th className="text-left font-medium px-3 py-2.5">Project</th>
-              <th className="text-left font-medium px-3 py-2.5">Tags</th>
-              <th className="text-left font-medium px-3 py-2.5">Due</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading.tasks ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-t border-border">
-                  <td className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-5 w-24 rounded-full" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-24" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
-                </tr>
-              ))
-            ) : (
-              tasks.map((t) => {
-                const status = STATUS_META[t.status]
-                const priority = PRIORITY_META[t.priority]
-                const assignee = users.find((u) => u.id === t.assigneeId)
-                const project = projects.find((p) => p.id === t.projectId)
-                const taskTags = tags.filter((l) => t.labels.includes(l.id))
-                return (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <table className="w-full text-sm">
+            <thead className="bg-muted/30 text-muted-foreground text-xs uppercase tracking-wide">
+              <tr>
+                <SortableContext
+                  items={columnOrder}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  {columnOrder.map((id) => (
+                    <SortableHeader
+                      key={id}
+                      id={id}
+                      label={DEFAULT_COLUMNS.find((c) => c.id === id)?.label || ""}
+                    />
+                  ))}
+                </SortableContext>
+              </tr>
+            </thead>
+            <tbody>
+              {loading.tasks ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-t border-border">
+                    {columnOrder.map((colId) => (
+                      <td key={colId} className="px-3 py-3 first:pl-4">
+                        <Skeleton className="h-4 w-full" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                tasks.map((t) => (
                   <tr
                     key={t.id}
                     onClick={() => dispatch({ type: "SELECT_TASK", taskId: t.id })}
                     className="border-t border-border hover:bg-accent/30 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-2.5 font-medium max-w-md">
-                      <div className="truncate">{t.title}</div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                        {columns.find(c => c.id === t.columnId)?.label || "Unassigned"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={cn(
-                          "inline-flex items-center text-[11px] font-medium px-1.5 py-0.5 rounded border",
-                          priority.badge,
-                        )}
-                      >
-                        {priority.label}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <UserAvatar user={assignee} size="xs" />
-                        <span className="text-muted-foreground truncate">
-                          {assignee?.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {project ? `${project.emoji} ${project.name}` : "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap gap-1">
-                        {taskTags.slice(0, 2).map((l) => (
-                          <span
-                            key={l.id}
-                            className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded"
-                          >
-                            <span
-                              className={cn("h-1.5 w-1.5 rounded-full", labelDotClass(l.color))}
-                            />
-                            {l.name}
-                          </span>
-                        ))}
-                        {taskTags.length > 2 && (
-                          <span className="text-[10px] text-muted-foreground">
-                            +{taskTags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
-                      {formatDate(t.dueDate)}
-                    </td>
+                    {columnOrder.map((colId) => renderCell(t, colId))}
                   </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
+                ))
+              )}
+            </tbody>
+          </table>
+        </DndContext>
       </div>
     </div>
   )
