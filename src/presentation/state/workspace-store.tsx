@@ -67,9 +67,10 @@ type Action =
   | { type: "DELETE_COLUMN"; columnId: string }
   | { type: "ADD_COMMENT"; taskId: string; body: string }
   | { type: "ADD_REFERENCE"; taskId: string; ref: Omit<Reference, "id"> }
-  | { type: "ADD_NOTE" }
+  | { type: "ADD_NOTE"; note: Note }
   | { type: "DELETE_NOTE"; noteId: string }
   | { type: "UPDATE_NOTE"; noteId: string; patch: Partial<Note> }
+  | { type: "SET_NOTES"; notes: Note[] }
   | { type: "SELECT_CHANNEL"; channelId: string }
   | { type: "SEND_MESSAGE"; channelId: string; body: string }
   | { type: "TOGGLE_REACTION"; messageId: string; emoji: string }
@@ -220,13 +221,10 @@ function reducer(state: State, action: Action): State {
       }
     }
     case "ADD_NOTE": {
-      const note: Note = {
-        id: `n-${Date.now()}`,
-        title: "Untitled note",
-        body: "",
-        updatedAt: new Date().toISOString(),
-      }
-      return { ...state, notes: [note, ...state.notes] }
+      return { ...state, notes: [action.note, ...state.notes] }
+    }
+    case "SET_NOTES": {
+      return { ...state, notes: action.notes }
     }
     case "DELETE_NOTE":
       return { ...state, notes: state.notes.filter((n) => n.id !== action.noteId) }
@@ -497,6 +495,35 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchTags();
+  }, [state.activeWorkspaceId]);
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) {
+      dispatch({ type: "SET_NOTES", notes: [] });
+      return;
+    }
+
+    const fetchNotes = async () => {
+      try {
+        const res = await fetch(`/api/notes?workspaceId=${state.activeWorkspaceId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.notes.map((n: any) => ({
+            id: n._id,
+            title: n.title,
+            body: n.body,
+            projectId: n.projectId,
+            workspaceId: n.workspaceId,
+            updatedAt: n.updatedAt || n.createdAt || new Date().toISOString(),
+          }));
+          dispatch({ type: "SET_NOTES", notes: mapped });
+        }
+      } catch (e) {
+        console.error("Failed to fetch notes", e);
+      }
+    };
+
+    fetchNotes();
   }, [state.activeWorkspaceId]);
 
   return (

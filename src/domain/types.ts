@@ -83,6 +83,8 @@ export type Note = {
   title: string
   body: string
   updatedAt: string
+  projectId: string
+  workspaceId: string
 }
 
 export type Goal = {
