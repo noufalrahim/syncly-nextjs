@@ -1,14 +1,14 @@
 "use client"
 
 import { cn } from "@/core/utils"
-import { labelDotClass } from "@/domain/label-colors"
+import { labelDotClass, getHexColor } from "@/domain/label-colors"
 import { PRIORITY_META, STATUS_META } from "@/domain/types"
 import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
 
 import { useState } from "react"
-import { GripVertical } from "lucide-react"
+import { GripVertical, Edit2, Trash2 } from "lucide-react"
 import {
   DndContext,
   closestCenter,
@@ -167,19 +167,28 @@ export function TableView() {
         return (
           <td key={columnId} className={cellClass}>
             <div className="flex flex-wrap gap-1">
-              {taskTags.slice(0, 2).map((l) => (
-                <span
-                  key={l.id}
-                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded"
-                >
+              {taskTags.slice(0, 2).map((l) => {
+                const tagHex = getHexColor(l.color)
+                return (
                   <span
-                    className={cn("h-1.5 w-1.5 rounded-full", labelDotClass(l.color))}
-                  />
-                  {l.name}
-                </span>
-              ))}
+                    key={l.id}
+                    className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border shadow-sm"
+                    style={{
+                      backgroundColor: `${tagHex}15`,
+                      borderColor: `${tagHex}30`,
+                      color: tagHex,
+                    }}
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: tagHex }}
+                    />
+                    {l.name}
+                  </span>
+                )
+              })}
               {taskTags.length > 2 && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground font-semibold">
                   +{taskTags.length - 2}
                 </span>
               )}
@@ -206,7 +215,7 @@ export function TableView() {
           onDragEnd={handleDragEnd}
         >
           <table className="w-full text-sm">
-            <thead className="bg-muted/30 text-muted-foreground text-xs uppercase tracking-wide">
+             <thead className="bg-muted/30 text-muted-foreground text-xs uppercase tracking-wide">
               <tr>
                 <SortableContext
                   items={columnOrder}
@@ -220,6 +229,7 @@ export function TableView() {
                     />
                   ))}
                 </SortableContext>
+                <th className="text-right font-medium px-4 py-2.5 w-24 pr-6">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -231,6 +241,9 @@ export function TableView() {
                         <Skeleton className="h-4 w-full" />
                       </td>
                     ))}
+                    <td className="px-4 py-3 pr-6">
+                      <Skeleton className="h-4 w-12 ml-auto" />
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -238,9 +251,37 @@ export function TableView() {
                   <tr
                     key={t.id}
                     onClick={() => dispatch({ type: "SELECT_TASK", taskId: t.id })}
-                    className="border-t border-border hover:bg-accent/30 cursor-pointer transition-colors"
+                    className="group border-t border-border hover:bg-accent/30 cursor-pointer transition-colors"
                   >
                     {columnOrder.map((colId) => renderCell(t, colId))}
+                    <td className="px-4 py-2.5 text-right w-24 pr-6">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            dispatch({ type: "SELECT_TASK", taskId: t.id })
+                          }}
+                          className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          aria-label="Edit task"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            dispatch({ type: "DELETE_TASK", taskId: t.id })
+                            await fetch(`/api/tasks?taskId=${t.id}`, { method: "DELETE" })
+                              .catch(err => console.error("Failed to delete task", err))
+                          }}
+                          className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          aria-label="Delete task"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}

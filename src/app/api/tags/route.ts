@@ -33,3 +33,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { tagId, patch } = await request.json();
+
+    if (!tagId) {
+      return NextResponse.json({ error: "tagId is required" }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const tag = await Tag.findByIdAndUpdate(tagId, patch, { new: true });
+
+    return NextResponse.json({ tag }, { status: 200 });
+  } catch (error) {
+    console.error("Update tag error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const tagId = searchParams.get("tagId");
+
+    if (!tagId) {
+      return NextResponse.json({ error: "tagId is required" }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    await Tag.findByIdAndDelete(tagId);
+
+    return NextResponse.json({ message: "Tag deleted successfully" }, { status: 200 });
+  } catch (error) {
+    console.error("Delete tag error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}

@@ -5,7 +5,7 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { CalendarDays, MessageSquare, Paperclip, Trash2 } from "lucide-react"
 import { cn } from "@/core/utils"
-import { labelDotClass } from "@/domain/label-colors"
+import { labelDotClass, getHexColor } from "@/domain/label-colors"
 import { PRIORITY_META, STATUS_META, type Task } from "@/domain/types"
 import { useDispatch, useUser, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
@@ -58,31 +58,8 @@ export function TaskCard({
 
   const priority = PRIORITY_META[task.priority]
 
-  const getBadgeColor = (color: string) => {
-    switch (color) {
-      case "red": return "bg-red-500/10 text-red-500 border-red-500/20";
-      case "orange": return "bg-orange-500/10 text-orange-500 border-orange-500/20";
-      case "yellow": return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
-      case "green": return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-      case "blue": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-      case "purple": return "bg-purple-500/10 text-purple-500 border-purple-500/20";
-      case "pink": return "bg-pink-500/10 text-pink-500 border-pink-500/20";
-      default: return "bg-gray-500/10 text-gray-400 border-gray-500/20";
-    }
-  }
-
-  const getDotColor = (color: string) => {
-    switch (color) {
-      case "red": return "bg-red-500";
-      case "orange": return "bg-orange-500";
-      case "yellow": return "bg-yellow-500";
-      case "green": return "bg-emerald-500";
-      case "blue": return "bg-blue-500";
-      case "purple": return "bg-purple-500";
-      case "pink": return "bg-pink-500";
-      default: return "bg-gray-400";
-    }
-  }
+  const columnColor = column?.color || "gray"
+  const columnHex = getHexColor(columnColor)
 
   return (
     <div
@@ -107,15 +84,20 @@ export function TaskCard({
         className="absolute inset-0 z-0"
         aria-label={`Drag ${task.title}`}
       />
-      <div className="relative flex items-start justify-between gap-2 z-10 pointer-events-none">
+      <div className="relative flex items-start justify-between gap-2 z-10">
         {column ? (
           <span
-            className={cn(
-              "inline-flex items-center gap-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded border",
-              getBadgeColor(column.color || "gray")
-            )}
+            className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border shadow-sm"
+            style={{
+              backgroundColor: `${columnHex}15`,
+              borderColor: `${columnHex}30`,
+              color: columnHex,
+            }}
           >
-            <span className={cn("h-1.5 w-1.5 rounded-full", getDotColor(column.color || "gray"))} />
+            <span 
+              className="h-1.5 w-1.5 rounded-full shadow-sm" 
+              style={{ backgroundColor: columnHex }}
+            />
             {column.label}
           </span>
         ) : (
@@ -149,15 +131,26 @@ export function TaskCard({
 
       {taskTags.length > 0 && (
         <div className="relative z-10 pointer-events-none flex flex-wrap gap-1">
-          {taskTags.map((t) => (
-            <span
-              key={t.id}
-              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded"
-            >
-              <span className={cn("h-1.5 w-1.5 rounded-full", labelDotClass(t.color))} />
-              {t.name}
-            </span>
-          ))}
+          {taskTags.map((t) => {
+            const tagHex = getHexColor(t.color)
+            return (
+              <span
+                key={t.id}
+                className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border shadow-sm"
+                style={{
+                  backgroundColor: `${tagHex}15`,
+                  borderColor: `${tagHex}30`,
+                  color: tagHex,
+                }}
+              >
+                <span 
+                  className="h-1.5 w-1.5 rounded-full shadow-sm" 
+                  style={{ backgroundColor: tagHex }}
+                />
+                {t.name}
+              </span>
+            )
+          })}
         </div>
       )}
 

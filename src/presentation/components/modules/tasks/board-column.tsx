@@ -11,6 +11,7 @@ import { TaskCard, TaskCardSkeleton } from "./task-card"
 import { QuickAddTask } from "./quick-add-task"
 import { useDispatch } from "@/presentation/state/workspace-store"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
+import { getHexColor } from "@/domain/label-colors"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -136,7 +137,10 @@ export function BoardColumn({
             >
               <GripVertical className="h-4 w-4" />
             </button>
-            <span className={cn("h-2 w-2 rounded-full shrink-0", getDotColor(color))} />
+             <span 
+              className="h-2 w-2 rounded-full shrink-0 shadow-sm" 
+              style={{ backgroundColor: getHexColor(color) }} 
+            />
             <h2 className="text-sm font-semibold truncate hover:text-primary transition-colors cursor-default">
               {label}
             </h2>
@@ -238,20 +242,37 @@ export function BoardColumn({
             </div>
             <div className="space-y-2">
               <Label>Column Color</Label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {COLUMN_COLORS.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => setEditColor(c.id)}
                     className={cn(
-                      "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all",
+                      "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all cursor-pointer shadow-sm",
                       c.hex,
-                      editColor === c.id ? "border-primary scale-110 shadow-lg" : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
+                      editColor === c.id ? "border-primary scale-110 shadow-md" : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
                     )}
                     aria-label={`Select ${c.id} color`}
                   />
                 ))}
+                
+                {/* Custom Color Picker */}
+                <div className="relative h-8 w-8 rounded-full overflow-hidden border-2 cursor-pointer shadow-sm group hover:scale-105 transition-all flex items-center justify-center"
+                     style={{ borderColor: editColor.startsWith("#") ? "hsl(var(--primary))" : "transparent" }}>
+                  <div 
+                    className="absolute inset-0 h-full w-full flex items-center justify-center text-xs font-semibold text-white bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500"
+                    style={editColor.startsWith("#") ? { background: editColor } : {}}
+                  >
+                    <Plus className="h-4 w-4 text-white drop-shadow" />
+                  </div>
+                  <input
+                    type="color"
+                    value={editColor.startsWith("#") ? editColor : "#3b82f6"}
+                    onChange={(e) => setEditColor(e.target.value)}
+                    className="absolute inset-0 h-full w-full p-0 m-0 border-0 cursor-pointer opacity-0 z-10"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="pt-2">

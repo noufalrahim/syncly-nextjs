@@ -35,7 +35,8 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
   const [priority, setPriority] = React.useState<string>("medium")
   const [selectedTags, setSelectedTags] = React.useState<string[]>([])
   
-  const { users, tags } = useWorkspace()
+  const { users, tags, activeProjectId } = useWorkspace()
+  const projectTags = tags.filter(t => t.projectId === activeProjectId)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
@@ -66,6 +67,10 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
   }
 
   const assignee = users.find(u => u.id === assigneeId)
+
+  // Import getHexColor dynamically or since we imported cn let's import getHexColor at top or import it inline.
+  // Actually, let's use the absolute import at top or import it inline.
+  const { getHexColor } = require("@/domain/label-colors");
 
   return (
     <div className="bg-card border border-primary/30 rounded-xl p-3 shadow-lg animate-in fade-in zoom-in-95 duration-200 ring-1 ring-primary/20">
@@ -156,7 +161,7 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
-            {tags.map(tag => (
+            {projectTags.map(tag => (
               <DropdownMenuItem 
                 key={tag.id} 
                 onClick={() => {
@@ -167,7 +172,7 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
                 className="flex items-center justify-between"
               >
                 <div className="flex items-center gap-2">
-                  <span className={cn("h-2 w-2 rounded-full", `bg-${tag.color}-500`)} />
+                  <span className="h-2 w-2 rounded-full shadow-sm" style={{ backgroundColor: getHexColor(tag.color) }} />
                   {tag.name}
                 </div>
                 {selectedTags.includes(tag.id) && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}

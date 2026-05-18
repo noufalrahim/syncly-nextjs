@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Edit2, Trash2 } from "lucide-react"
 import { cn } from "@/core/utils"
 import { PRIORITY_META, STATUS_META, type TaskStatus } from "@/domain/types"
 import { useDispatch, useProjectTasks, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
+import { getHexColor } from "@/domain/label-colors"
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -87,10 +88,10 @@ export function ListView() {
                           onClick={() =>
                             dispatch({ type: "SELECT_TASK", taskId: t.id })
                           }
-                          className="flex items-center gap-3 px-2 py-2 hover:bg-accent/40 cursor-pointer border-b border-border last:border-b-0 transition-colors"
+                          className="group flex items-center gap-3 px-3 py-2.5 hover:bg-accent/40 cursor-pointer border-b border-border last:border-b-0 transition-colors"
                         >
                           <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-                          <span className="text-sm flex-1 truncate">{t.title}</span>
+                          <span className="text-sm font-medium flex-1 truncate">{t.title}</span>
                           <span
                             className={cn(
                               "inline-flex items-center text-[11px] font-medium px-1.5 py-0.5 rounded border",
@@ -103,6 +104,34 @@ export function ListView() {
                             {formatDate(t.dueDate)}
                           </span>
                           <UserAvatar user={assignee} size="xs" />
+                          
+                          {/* Hover Actions */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                dispatch({ type: "SELECT_TASK", taskId: t.id })
+                              }}
+                              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              aria-label="Edit task"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                dispatch({ type: "DELETE_TASK", taskId: t.id })
+                                await fetch(`/api/tasks?taskId=${t.id}`, { method: "DELETE" })
+                                  .catch(err => console.error("Failed to delete task", err))
+                              }}
+                              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              aria-label="Delete task"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </li>
                       )
                     })}

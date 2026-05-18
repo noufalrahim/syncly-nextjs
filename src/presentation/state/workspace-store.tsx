@@ -85,6 +85,8 @@ type Action =
   | { type: "SET_COLUMNS"; columns: ColumnDef[] }
   | { type: "SET_TAGS"; tags: Tag[] }
   | { type: "ADD_TAG"; tag: Tag }
+  | { type: "UPDATE_TAG"; tagId: string; patch: Partial<Tag> }
+  | { type: "DELETE_TAG"; tagId: string }
   | { type: "SET_LOADING"; key: keyof State["loading"]; value: boolean }
 
 
@@ -318,6 +320,18 @@ function reducer(state: State, action: Action): State {
       return { ...state, tags: action.tags }
     case "ADD_TAG":
       return { ...state, tags: [...state.tags, action.tag] }
+    case "UPDATE_TAG":
+      return {
+        ...state,
+        tags: state.tags.map((t) =>
+          t.id === action.tagId ? { ...t, ...action.patch } : t,
+        ),
+      }
+    case "DELETE_TAG":
+      return {
+        ...state,
+        tags: state.tags.filter((t) => t.id !== action.tagId),
+      }
     case "SET_LOADING":
       return {
         ...state,
@@ -484,6 +498,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             id: t._id,
             name: t.name,
             color: t.color,
+            projectId: t.projectId,
+            workspaceId: t.workspaceId,
           }));
           dispatch({ type: "SET_TAGS", tags: mapped });
         }

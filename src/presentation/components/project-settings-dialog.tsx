@@ -1,20 +1,23 @@
 import * as React from "react"
-import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, MoreHorizontal, Loader2, GripVertical } from "lucide-react"
+import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, Edit2, Loader2, GripVertical } from "lucide-react"
 import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace, useProjectColumns } from "@/presentation/state/workspace-store"
 import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogDescription,
+  DialogHeader,
+  DialogFooter,
 } from "@/presentation/components/ui/dialog"
 import { Button } from "@/presentation/components/ui/button"
 import { Input } from "@/presentation/components/ui/input"
 import { Label } from "@/presentation/components/ui/label"
 import { UserAvatar } from "@/presentation/components/user-avatar"
-import type { Project } from "@/domain/types"
 import EmojiPicker, { Theme } from "emoji-picker-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
 import { useTheme } from "next-themes"
+import { getHexColor } from "@/domain/label-colors"
 import {
   DndContext,
   closestCenter,
@@ -35,10 +38,12 @@ import { CSS } from "@dnd-kit/utilities"
 
 function SortableColumnItem({ 
   col, 
-  onDelete 
+  onDelete,
+  onEdit
 }: { 
   col: any, 
-  onDelete: (id: string) => void 
+  onDelete: (id: string) => void,
+  onEdit: () => void 
 }) {
   const {
     attributes,
@@ -56,25 +61,38 @@ function SortableColumnItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
+  const hexColor = getHexColor(col.color)
+
   return (
     <div 
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg group hover:border-primary/30 transition-colors"
+      className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg group hover:border-primary/30 transition-all duration-200"
     >
       <div className="flex items-center gap-4">
         <button
           {...attributes}
           {...listeners}
           className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+          type="button"
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <span className={cn("h-3 w-3 rounded-full shadow-sm")} style={{ backgroundColor: col.color === "gray" ? "#9ca3af" : col.color }} />
+        <span 
+          className="h-3 w-3 rounded-full shadow-sm ring-2 ring-background" 
+          style={{ backgroundColor: hexColor }} 
+        />
         <span className="text-sm font-semibold">{col.label}</span>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={onEdit}
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -97,11 +115,10 @@ export function ProjectSettingsDialog({
   onOpenChange: (open: boolean) => void
   projectId: string | null
 }) {
-  const { projects, users, tags } = useWorkspace()
+  const { projects, users, tags, columns: allStoreColumns } = useWorkspace()
   const { theme } = useTheme()
   const dispatch = useDispatch()
   const project = projects.find(p => p.id === projectId)
-  const columns = useProjectColumns()
 
   const [activeTab, setActiveTab] = React.useState<"general" | "columns" | "tags" | "members" | "danger">("general")
 
@@ -112,6 +129,18 @@ export function ProjectSettingsDialog({
   const [localColumns, setLocalColumns] = React.useState<any[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+
+  // Column Dialog states
+  const [isColumnDialogOpen, setIsColumnDialogOpen] = React.useState(false)
+  const [columnEditing, setColumnEditing] = React.useState<any | null>(null)
+  const [columnLabelInput, setColumnLabelInput] = React.useState("")
+  const [columnColorInput, setColumnColorInput] = React.useState("gray")
+
+  // Tag Dialog states
+  const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false)
+  const [tagEditing, setTagEditing] = React.useState<any | null>(null)
+  const [tagNameInput, setTagNameInput] = React.useState("")
+  const [tagColorInput, setTagColorInput] = React.useState("blue")
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -144,6 +173,8 @@ export function ProjectSettingsDialog({
 
   if (!project) return null
 
+  const projectTags = tags.filter(t => t.projectId === project.id)
+
   const handleSaveGeneral = async () => {
     if (!projectName.trim()) return
     setIsSaving(true)
@@ -172,10 +203,59 @@ export function ProjectSettingsDialog({
     }
   }
 
+  // Columns CRUD
   const handleDeleteColumn = async (colId: string) => {
     dispatch({ type: "DELETE_COLUMN", columnId: colId })
     setLocalColumns(prev => prev.filter(c => c.id !== colId))
     await fetch(`/api/columns?columnId=${colId}`, { method: "DELETE" })
+  }
+
+  const handleSaveColumn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!columnLabelInput.trim()) return
+
+    if (columnEditing) {
+      // Edit column
+      const updated = { label: columnLabelInput.trim(), color: columnColorInput }
+      
+      dispatch({ type: "UPDATE_COLUMN", columnId: columnEditing.id, patch: updated })
+      setLocalColumns(prev => prev.map(c => c.id === columnEditing.id ? { ...c, ...updated } : c))
+      
+      await fetch("/api/columns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          columnId: columnEditing.id,
+          patch: updated
+        })
+      }).catch(err => console.error("Failed to edit column", err))
+    } else {
+      // Create column
+      const res = await fetch("/api/columns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: columnLabelInput.trim(),
+          color: columnColorInput,
+          projectId: project.id,
+          status: columnLabelInput.trim().toLowerCase().replace(/\s+/g, "-"),
+          order: localColumns.length
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const newCol = {
+          id: data.column._id,
+          label: data.column.label,
+          status: data.column.status,
+          projectId: data.column.projectId,
+          color: data.column.color
+        }
+        setLocalColumns(prev => [...prev, newCol])
+        dispatch({ type: "SET_COLUMNS", columns: [...allStoreColumns, newCol] })
+      }
+    }
+    setIsColumnDialogOpen(false)
   }
 
   const handleColumnDragEnd = async (event: DragEndEvent) => {
@@ -205,6 +285,61 @@ export function ProjectSettingsDialog({
       })
     )).catch(err => console.error("Failed to persist column reorder", err))
   }
+
+  // Tags CRUD
+  const handleDeleteTag = async (tagId: string) => {
+    dispatch({ type: "DELETE_TAG", tagId })
+    await fetch(`/api/tags?tagId=${tagId}`, { method: "DELETE" })
+      .catch(err => console.error("Failed to delete tag", err))
+  }
+
+  const handleSaveTag = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tagNameInput.trim()) return
+
+    if (tagEditing) {
+      // Edit tag
+      const updated = { name: tagNameInput.trim(), color: tagColorInput }
+      dispatch({ type: "UPDATE_TAG", tagId: tagEditing.id, patch: updated })
+      
+      await fetch("/api/tags", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tagId: tagEditing.id,
+          patch: updated
+        })
+      }).catch(err => console.error("Failed to update tag", err))
+    } else {
+      // Create tag
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: tagNameInput.trim(),
+          color: tagColorInput,
+          workspaceId: project.workspaceId || project.id,
+          projectId: project.id
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        dispatch({
+          type: "ADD_TAG",
+          tag: {
+            id: data.tag._id,
+            name: data.tag.name,
+            color: data.tag.color,
+            projectId: data.tag.projectId,
+            workspaceId: data.tag.workspaceId
+          }
+        })
+      }
+    }
+    setIsTagDialogOpen(false)
+  }
+
+  const COLOR_PALETTE = ["gray", "red", "orange", "yellow", "green", "blue", "purple", "pink"]
 
   const TABS = [
     { id: "general", label: "General", icon: Settings },
@@ -324,36 +459,57 @@ export function ProjectSettingsDialog({
 
               {activeTab === "columns" && (
                 <div className="space-y-8">
-                  <div>
-                    <h2 className="text-xl font-semibold">Workflow Columns</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Define the columns that represent your project's process.</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold">Workflow Columns</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Define the columns that represent your project's process.</p>
+                    </div>
+                    <Button 
+                      variant="secondary" 
+                      className="h-10 px-4"
+                      onClick={() => {
+                        setColumnEditing(null)
+                        setColumnLabelInput("")
+                        setColumnColorInput("gray")
+                        setIsColumnDialogOpen(true)
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Add Column
+                    </Button>
                   </div>
 
                   <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-                    <div className="flex items-center gap-3">
-                      <Input placeholder="Add a new column..." className="h-11" />
-                      <Button variant="secondary" className="h-11 px-6"><Plus className="h-4 w-4 mr-2" /> Add Column</Button>
-                    </div>
-
                     <div className="space-y-3">
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleColumnDragEnd}
-                      >
-                        <SortableContext
-                          items={localColumns.map(c => c.id)}
-                          strategy={verticalListSortingStrategy}
+                      {localColumns.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground text-sm italic">
+                          No columns created yet. Click Add Column to start!
+                        </div>
+                      ) : (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleColumnDragEnd}
                         >
-                          {localColumns.map(col => (
-                            <SortableColumnItem 
-                              key={col.id} 
-                              col={col} 
-                              onDelete={handleDeleteColumn} 
-                            />
-                          ))}
-                        </SortableContext>
-                      </DndContext>
+                          <SortableContext
+                            items={localColumns.map(c => c.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {localColumns.map(col => (
+                              <SortableColumnItem 
+                                key={col.id} 
+                                col={col} 
+                                onDelete={handleDeleteColumn}
+                                onEdit={() => {
+                                  setColumnEditing(col)
+                                  setColumnLabelInput(col.label)
+                                  setColumnColorInput(col.color)
+                                  setIsColumnDialogOpen(true)
+                                }}
+                              />
+                            ))}
+                          </SortableContext>
+                        </DndContext>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -364,25 +520,71 @@ export function ProjectSettingsDialog({
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-semibold">Task Tags</h2>
-                      <p className="text-sm text-muted-foreground mt-1">Categorize your tasks with colorful, descriptive tags.</p>
+                      <p className="text-sm text-muted-foreground mt-1">Categorize your tasks with colorful, descriptive tags (scoped to this project).</p>
                     </div>
-                    <Button variant="secondary" size="sm"><Plus className="h-4 w-4 mr-2" /> New Tag</Button>
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => {
+                        setTagEditing(null)
+                        setTagNameInput("")
+                        setTagColorInput("blue")
+                        setIsTagDialogOpen(true)
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> New Tag
+                    </Button>
                   </div>
 
                   <div className="bg-card border border-border rounded-xl p-6">
-                    <div className="grid grid-cols-2 gap-3">
-                      {tags.map(t => (
-                        <div key={t.id} className="flex items-center justify-between px-4 py-3 border border-border/60 rounded-lg group hover:bg-muted/30 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <span className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-background shadow-sm", `bg-${t.color}-500`)} />
-                            <span className="text-sm font-medium">{t.name}</span>
-                          </div>
-                          <button className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {projectTags.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground text-sm italic">
+                        No tags found for this project. Create one to get started!
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        {projectTags.map(t => {
+                          const tagHex = getHexColor(t.color)
+                          return (
+                            <div 
+                              key={t.id} 
+                              className="flex items-center justify-between px-4 py-3 border border-border/60 rounded-lg group hover:bg-muted/30 transition-all duration-200"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span 
+                                  className="h-2.5 w-2.5 rounded-full ring-2 ring-background shadow-sm" 
+                                  style={{ backgroundColor: tagHex }}
+                                />
+                                <span className="text-sm font-semibold">{t.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={() => {
+                                    setTagEditing(t)
+                                    setTagNameInput(t.name)
+                                    setTagColorInput(t.color)
+                                    setIsTagDialogOpen(true)
+                                  }}
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteTag(t.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -403,7 +605,6 @@ export function ProjectSettingsDialog({
                     </div>
 
                     <div className="divide-y divide-border/40">
-                      {/* Current user */}
                       <div className="flex items-center justify-between p-6 hover:bg-muted/10 transition-colors">
                         <div className="flex items-center gap-4">
                           <UserAvatar user={users[0]} size="lg" />
@@ -474,6 +675,146 @@ export function ProjectSettingsDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Column creation/editing Dialog */}
+      <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{columnEditing ? "Edit Column" : "Add New Column"}</DialogTitle>
+            <DialogDescription>
+              {columnEditing ? "Modify your column properties below." : "Add a new column stage to your workflow."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveColumn} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="col-name">Column Name</Label>
+              <Input
+                id="col-name"
+                value={columnLabelInput}
+                onChange={(e) => setColumnLabelInput(e.target.value)}
+                placeholder="e.g. In Review, QA, Deployed"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Column Color</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {COLOR_PALETTE.map((c) => {
+                  const hex = getHexColor(c)
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColumnColorInput(c)}
+                      className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all cursor-pointer shadow-sm",
+                        columnColorInput === c ? "border-primary scale-110 shadow-md" : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
+                      )}
+                      style={{ backgroundColor: hex }}
+                      aria-label={`Select ${c} color`}
+                    />
+                  )
+                })}
+                
+                {/* Custom Color Picker */}
+                <div className="relative h-8 w-8 rounded-full overflow-hidden border-2 cursor-pointer shadow-sm group hover:scale-105 transition-all flex items-center justify-center"
+                     style={{ borderColor: columnColorInput.startsWith("#") ? "hsl(var(--primary))" : "transparent" }}>
+                  <div 
+                    className="absolute inset-0 h-full w-full flex items-center justify-center text-xs font-semibold text-white bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500"
+                    style={columnColorInput.startsWith("#") ? { background: columnColorInput } : {}}
+                  >
+                    <Plus className="h-4 w-4 text-white drop-shadow" />
+                  </div>
+                  <input
+                    type="color"
+                    value={columnColorInput.startsWith("#") ? columnColorInput : "#3b82f6"}
+                    onChange={(e) => setColumnColorInput(e.target.value)}
+                    className="absolute inset-0 h-full w-full p-0 m-0 border-0 cursor-pointer opacity-0 z-10"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsColumnDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!columnLabelInput.trim()}>
+                {columnEditing ? "Save Column" : "Add Column"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tag creation/editing Dialog */}
+      <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{tagEditing ? "Edit Tag" : "Create New Tag"}</DialogTitle>
+            <DialogDescription>
+              {tagEditing ? "Update your tag name and styling." : "Add a custom tag scoped to this project."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveTag} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="tag-name">Tag Name</Label>
+              <Input
+                id="tag-name"
+                value={tagNameInput}
+                onChange={(e) => setTagNameInput(e.target.value)}
+                placeholder="e.g. Backend, Refactor, Blocked"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tag Color</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {COLOR_PALETTE.map((c) => {
+                  const hex = getHexColor(c)
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setTagColorInput(c)}
+                      className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all cursor-pointer shadow-sm",
+                        tagColorInput === c ? "border-primary scale-110 shadow-md" : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
+                      )}
+                      style={{ backgroundColor: hex }}
+                      aria-label={`Select ${c} color`}
+                    />
+                  )
+                })}
+                
+                {/* Custom Color Picker */}
+                <div className="relative h-8 w-8 rounded-full overflow-hidden border-2 cursor-pointer shadow-sm group hover:scale-105 transition-all flex items-center justify-center"
+                     style={{ borderColor: tagColorInput.startsWith("#") ? "hsl(var(--primary))" : "transparent" }}>
+                  <div 
+                    className="absolute inset-0 h-full w-full flex items-center justify-center text-xs font-semibold text-white bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500"
+                    style={tagColorInput.startsWith("#") ? { background: tagColorInput } : {}}
+                  >
+                    <Plus className="h-4 w-4 text-white drop-shadow" />
+                  </div>
+                  <input
+                    type="color"
+                    value={tagColorInput.startsWith("#") ? tagColorInput : "#3b82f6"}
+                    onChange={(e) => setTagColorInput(e.target.value)}
+                    className="absolute inset-0 h-full w-full p-0 m-0 border-0 cursor-pointer opacity-0 z-10"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsTagDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!tagNameInput.trim()}>
+                {tagEditing ? "Save Tag" : "Create Tag"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

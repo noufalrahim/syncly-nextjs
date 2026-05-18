@@ -17,7 +17,9 @@ export type User = {
 export type Tag = {
   id: string
   name: string
-  color: string // tailwind class fragment, e.g. "blue"
+  color: string // tailwind class fragment or hex color
+  projectId?: string
+  workspaceId?: string
 }
 
 export type Comment = {

@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/core/utils"
-import { labelDotClass } from "@/domain/label-colors"
+import { labelDotClass, getHexColor } from "@/domain/label-colors"
 import {
   PRIORITY_META,
   STATUS_META,
@@ -348,7 +348,7 @@ function PanelBody({ task }: { task: Task }) {
             <TagPicker
               selected={localTags}
               onToggle={toggleTag}
-              allTags={tags}
+              allTags={tags.filter((t) => t.projectId === task.projectId)}
             />
 
             <PropLabel icon={<LinkIcon className="h-3.5 w-3.5" />}>Dependency</PropLabel>
@@ -620,7 +620,13 @@ function TagPicker({ selected, onToggle, allTags }: { selected: string[]; onTogg
 
       if (res.ok) {
         const data = await res.json()
-        const newTag = { id: data.tag._id, name: data.tag.name, color: data.tag.color }
+        const newTag = { 
+          id: data.tag._id, 
+          name: data.tag.name, 
+          color: data.tag.color,
+          projectId: data.tag.projectId,
+          workspaceId: data.tag.workspaceId
+        }
         dispatch({ type: "ADD_TAG", tag: newTag })
         onToggle(newTag.id) // Automatically select the new tag
         setNewTagName("")
@@ -647,7 +653,13 @@ function TagPicker({ selected, onToggle, allTags }: { selected: string[]; onTogg
         ) : (
           <button type="button" onClick={() => setOpen((o) => !o)} className="w-full flex items-center gap-1.5 flex-wrap bg-muted/40 hover:bg-muted/60 border border-border rounded px-2 py-1 text-sm min-h-[28px] transition-colors">
             {selectedTags.length === 0 ? <span className="text-muted-foreground inline-flex items-center gap-1"><Plus className="h-3 w-3" />Add tags</span> : selectedTags.map((l) => (
-              <span key={l.id} className="inline-flex items-center gap-1 text-[11px] bg-muted/80 px-1.5 py-0.5 rounded"><span className={cn("h-1.5 w-1.5 rounded-full", labelDotClass(l.color))} />{l.name}</span>
+              <span key={l.id} className="inline-flex items-center gap-1.5 text-[11px] bg-muted/80 px-1.5 py-0.5 rounded shadow-sm">
+                <span 
+                  className="h-1.5 w-1.5 rounded-full shadow-sm" 
+                  style={{ backgroundColor: getHexColor(l.color) }}
+                />
+                {l.name}
+              </span>
             ))}
           </button>
         )}
@@ -662,7 +674,10 @@ function TagPicker({ selected, onToggle, allTags }: { selected: string[]; onTogg
                 <span className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center", checked ? "bg-primary border-primary" : "border-border bg-muted/40")}>
                   {checked && <svg viewBox="0 0 16 16" className="h-2.5 w-2.5 text-primary-foreground" fill="none" stroke="currentColor" strokeWidth="3"><path d="M3 8l3 3 7-7" /></svg>}
                 </span>
-                <span className={cn("h-1.5 w-1.5 rounded-full", labelDotClass(l.color))} />
+                <span 
+                  className="h-1.5 w-1.5 rounded-full shadow-sm" 
+                  style={{ backgroundColor: getHexColor(l.color) }}
+                />
                 <span>{l.name}</span>
               </button>
             )
@@ -701,22 +716,40 @@ function TagPicker({ selected, onToggle, allTags }: { selected: string[]; onTogg
             </div>
             <div className="space-y-2">
               <Label>Tag Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {TAG_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setNewTagColor(c)}
-                    className={cn(
-                      "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all",
-                      labelDotClass(c).replace("bg-", "bg-").replace("-500", "-500"), // Simple way to get the bg class
-                      newTagColor === c ? "border-primary scale-110 shadow-md" : "border-transparent opacity-80 hover:opacity-100"
-                    )}
-                    aria-label={`Select ${c} color`}
+              <div className="flex flex-wrap items-center gap-2">
+                {TAG_COLORS.map((c) => {
+                  const tagHex = getHexColor(c)
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNewTagColor(c)}
+                      className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all cursor-pointer shadow-sm",
+                        newTagColor === c ? "border-primary scale-110 shadow-md" : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
+                      )}
+                      style={{ backgroundColor: tagHex }}
+                      aria-label={`Select ${c} color`}
+                    />
+                  )
+                })}
+                
+                {/* Custom Color Picker */}
+                <div className="relative h-8 w-8 rounded-full overflow-hidden border-2 cursor-pointer shadow-sm group hover:scale-105 transition-all flex items-center justify-center"
+                     style={{ borderColor: newTagColor.startsWith("#") ? "hsl(var(--primary))" : "transparent" }}>
+                  <div 
+                    className="absolute inset-0 h-full w-full flex items-center justify-center text-xs font-semibold text-white bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500"
+                    style={newTagColor.startsWith("#") ? { background: newTagColor } : {}}
                   >
-                    <span className={cn("h-2 w-2 rounded-full", labelDotClass(c))} />
-                  </button>
-                ))}
+                    <Plus className="h-4 w-4 text-white drop-shadow" />
+                  </div>
+                  <input
+                    type="color"
+                    value={newTagColor.startsWith("#") ? newTagColor : "#3b82f6"}
+                    onChange={(e) => setNewTagColor(e.target.value)}
+                    className="absolute inset-0 h-full w-full p-0 m-0 border-0 cursor-pointer opacity-0 z-10"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="pt-2">
