@@ -361,15 +361,49 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, initialState)
 
   React.useEffect(() => {
+    const normalizeUser = (raw: any) => {
+      if (!raw) return null;
+      const name = String(raw.name || raw.email || "User");
+      const email = raw.email ? String(raw.email) : undefined;
+      const initials = name
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s: string) => s[0]?.toUpperCase())
+        .join("");
+      return {
+        id: String(raw.id),
+        name,
+        email,
+        initials: initials || "U",
+        color: "bg-blue-500",
+      };
+    };
+
     const saved = localStorage.getItem("syncly_user");
     if (saved) {
       try {
-        const user = JSON.parse(saved);
+        const user = normalizeUser(JSON.parse(saved));
         dispatch({ type: "SET_CURRENT_USER", user });
       } catch (e) {
         console.error("Failed to parse saved user", e);
       }
+      return;
     }
+
+    (async () => {
+      try {
+        const res = await fetch("/api/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.user) return;
+        localStorage.setItem("syncly_user", JSON.stringify(data.user));
+        const user = normalizeUser(data.user);
+        dispatch({ type: "SET_CURRENT_USER", user });
+      } catch (e) {
+        console.error("Failed to fetch current user", e);
+      }
+    })();
   }, []);
 
   React.useEffect(() => {
@@ -402,6 +436,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!state.activeWorkspaceId) {
       dispatch({ type: "SET_PROJECTS", projects: [] });
+      dispatch({ type: "SET_USERS", users: [] });
       return;
     }
 
@@ -428,6 +463,38 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchProjects();
+  }, [state.activeWorkspaceId]);
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/workspaces/members?workspaceId=${state.activeWorkspaceId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const palette = ["bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-amber-500", "bg-rose-500"];
+        const users = (data.members || []).map((m: any, idx: number) => {
+          const name = String(m.name || m.email || "User");
+          const email = m.email ? String(m.email) : undefined;
+          const initials = name
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((s: string) => s[0]?.toUpperCase())
+            .join("");
+          return {
+            id: m.userId,
+            name,
+            email,
+            initials: initials || "U",
+            color: palette[idx % palette.length],
+          };
+        });
+        dispatch({ type: "SET_USERS", users });
+      } catch (e) {
+        console.error("Failed to fetch workspace members", e);
+      }
+    })();
   }, [state.activeWorkspaceId]);
 
   React.useEffect(() => {

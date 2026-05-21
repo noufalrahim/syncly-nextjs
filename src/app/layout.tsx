@@ -1,16 +1,6 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-
-const geist = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist",
-})
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-})
 
 export const metadata: Metadata = {
   title: "Tessera — Task Management",
@@ -26,6 +16,7 @@ export const viewport: Viewport = {
 }
 
 import { Toaster } from "@/presentation/components/ui/sonner"
+import { Providers } from "@/app/providers"
 
 export default function RootLayout({
   children,
@@ -33,9 +24,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} bg-background`}>
+    <html lang="en" className="bg-background">
       <body className="font-sans antialiased text-foreground">
-        {children}
+        <Providers>{children}</Providers>
         <Toaster position={'top-right'}/>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>

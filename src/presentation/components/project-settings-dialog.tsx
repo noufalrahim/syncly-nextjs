@@ -13,6 +13,7 @@ import {
 import { Button } from "@/presentation/components/ui/button"
 import { Input } from "@/presentation/components/ui/input"
 import { Label } from "@/presentation/components/ui/label"
+import { Checkbox } from "@/presentation/components/ui/checkbox"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import EmojiPicker, { Theme } from "emoji-picker-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
@@ -115,7 +116,7 @@ export function ProjectSettingsDialog({
   onOpenChange: (open: boolean) => void
   projectId: string | null
 }) {
-  const { projects, users, tags, columns: allStoreColumns } = useWorkspace()
+  const { projects, users, tags, columns: allStoreColumns, currentUserId, workspaces } = useWorkspace()
   const { theme } = useTheme()
   const dispatch = useDispatch()
   const project = projects.find(p => p.id === projectId)
@@ -129,6 +130,12 @@ export function ProjectSettingsDialog({
   const [localColumns, setLocalColumns] = React.useState<any[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+
+  // Members
+  const [projectMembers, setProjectMembers] = React.useState<any[]>([])
+  const [isMembersLoading, setIsMembersLoading] = React.useState(false)
+  const [isAddMemberOpen, setIsAddMemberOpen] = React.useState(false)
+  const [selectedMemberIds, setSelectedMemberIds] = React.useState<string[]>([])
 
   // Column Dialog states
   const [isColumnDialogOpen, setIsColumnDialogOpen] = React.useState(false)
@@ -171,9 +178,38 @@ export function ProjectSettingsDialog({
     }
   }, [project])
 
-  if (!project) return null
+  React.useEffect(() => {
+    if (!project?.id) return
+    setIsMembersLoading(true)
+    fetch(`/api/projects/members?projectId=${project.id}`)
+      .then(res => res.json())
+      .then(data => setProjectMembers(data.members || []))
+      .catch(() => setProjectMembers([]))
+      .finally(() => setIsMembersLoading(false))
+  }, [project?.id])
 
-  const projectTags = tags.filter(t => t.projectId === project.id)
+  const projectTags = tags.filter(t => t.projectId === project?.id)
+  const workspaceOwnerId = workspaces.find((w: any) => String(w.id) === String(project?.workspaceId))?.ownerId as
+    | string
+    | undefined
+  const projectMemberIds = React.useMemo(
+    () => new Set(projectMembers.map((m) => String(m.userId))),
+    [projectMembers]
+  )
+  const addableUsers = React.useMemo(
+    () =>
+      users.filter(
+        (u) =>
+          u.id !== currentUserId &&
+          u.id !== workspaceOwnerId &&
+          !projectMemberIds.has(String(u.id))
+      ),
+    [users, currentUserId, workspaceOwnerId, projectMemberIds]
+  )
+  const currentUserRole = projectMembers.find(m => String(m.userId) === String(currentUserId))?.role
+  const isProjectAdmin = currentUserId === workspaceOwnerId || currentUserRole === "admin"
+
+  if (!project) return null
 
   const handleSaveGeneral = async () => {
     if (!projectName.trim()) return
@@ -598,26 +634,64 @@ export function ProjectSettingsDialog({
 
                   <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className="p-6 border-b border-border/40 bg-muted/20">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 px-4 py-2 bg-background border border-border rounded-md text-sm text-muted-foreground">Select workspace user</div>
-                        <Button className="px-6">Invite Member</Button>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm text-muted-foreground">
+                          Add members from your workspace/organisation list.
+                        </div>
+                        {isProjectAdmin && (
+                          <Button className="px-6" onClick={() => setIsAddMemberOpen(true)}>
+                            <Plus className="h-4 w-4 mr-2" /> Add Member
+                          </Button>
+                        )}
                       </div>
                     </div>
 
                     <div className="divide-y divide-border/40">
-                      <div className="flex items-center justify-between p-6 hover:bg-muted/10 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <UserAvatar user={users[0]} size="lg" />
-                          <div>
-                            <div className="text-sm font-semibold">{users[0]?.name}</div>
-                            <div className="text-xs text-muted-foreground">{users[0]?.email}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 bg-primary/10 text-primary rounded-full">Admin</span>
-                          <button className="text-xs text-muted-foreground hover:text-destructive transition-colors">Remove</button>
-                        </div>
-                      </div>
+                      {isMembersLoading ? (
+                        <div className="p-6 text-sm text-muted-foreground">Loading members…</div>
+                      ) : projectMembers.length === 0 ? (
+                        <div className="p-6 text-sm text-muted-foreground">No project members yet.</div>
+                      ) : (
+                        projectMembers.map((m) => {
+                          const name = String(m.name || m.email || "User")
+                          const initials = name
+                            .split(" ")
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((s: string) => s[0]?.toUpperCase())
+                            .join("") || "U"
+                          const avatarUser = { id: m.userId, name, initials, color: "bg-blue-500" }
+                          return (
+                            <div key={m.userId} className="flex items-center justify-between p-6 hover:bg-muted/10 transition-colors">
+                              <div className="flex items-center gap-4">
+                                <UserAvatar user={avatarUser as any} size="lg" />
+                                <div>
+                                  <div className="text-sm font-semibold">{name}</div>
+                                  <div className="text-xs text-muted-foreground">{m.email}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                <span className="text-xs font-bold capitalize tracking-wider px-2.5 py-1 bg-primary/10 text-primary rounded-full">
+                                  {String(m.role || "member")}
+                                </span>
+                                {isProjectAdmin && (
+                                  <button
+                                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                                    onClick={async () => {
+                                      await fetch(`/api/projects/members?projectId=${project.id}&userId=${m.userId}`, { method: "DELETE" })
+                                      const res = await fetch(`/api/projects/members?projectId=${project.id}`)
+                                      const data = await res.json().catch(() => ({}))
+                                      setProjectMembers(data.members || [])
+                                    }}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
@@ -675,6 +749,71 @@ export function ProjectSettingsDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Add Members Dialog */}
+      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Add Members</DialogTitle>
+            <DialogDescription>Select one or more users from your workspace/organisation.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="max-h-72 overflow-auto rounded-md border border-border p-2 space-y-1">
+              {users.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">No workspace users loaded.</div>
+              ) : addableUsers.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">Everyone is already in this project.</div>
+              ) : (
+                addableUsers.map((u) => {
+                  const checked = selectedMemberIds.includes(u.id)
+                  return (
+                    <label key={u.id} className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-muted/40 cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(next) => {
+                          const isChecked = next === true
+                          setSelectedMemberIds((prev) =>
+                            isChecked ? [...prev, u.id] : prev.filter((id) => id !== u.id)
+                          )
+                        }}
+                      />
+                      <div className="text-sm font-medium">{u.name}</div>
+                    </label>
+                  )
+                })
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelectedMemberIds([])
+                setIsAddMemberOpen(false)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!selectedMemberIds.length}
+              onClick={async () => {
+                await fetch("/api/projects/members", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ projectId: project.id, userIds: selectedMemberIds }),
+                })
+                const res = await fetch(`/api/projects/members?projectId=${project.id}`)
+                const data = await res.json().catch(() => ({}))
+                setProjectMembers(data.members || [])
+                setSelectedMemberIds([])
+                setIsAddMemberOpen(false)
+              }}
+            >
+              Add Selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Column creation/editing Dialog */}
       <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>

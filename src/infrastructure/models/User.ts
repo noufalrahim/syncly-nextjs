@@ -13,7 +13,19 @@ const UserSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      default: "",
+    },
+    image: {
+      type: String,
+      default: "",
+    },
+    provider: {
+      type: String,
+      default: "credentials",
+    },
+    providerAccountId: {
+      type: String,
+      default: "",
     },
   },
   {

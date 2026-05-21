@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import connectToDatabase from "@/infrastructure/db/mongodb";
 import Project from "@/infrastructure/models/Project";
+import ProjectMember from "@/infrastructure/models/ProjectMember";
+import Workspace from "@/infrastructure/models/Workspace";
+import { requireUser } from "@/infrastructure/auth/requireUser";
 
 export async function GET(request: Request) {
   try {
+    const me = await requireUser();
+    if (!me.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get("workspaceId");
 
@@ -12,7 +18,15 @@ export async function GET(request: Request) {
     }
 
     await connectToDatabase();
-    const projects = await Project.find({ workspaceId });
+    
+    const workspace = await Workspace.findById(workspaceId);
+    let projects = await Project.find({ workspaceId });
+
+    if (workspace?.ownerId !== me.userId) {
+      const memberships = await ProjectMember.find({ userId: me.userId });
+      const memberProjectIds = memberships.map(m => String(m.projectId));
+      projects = projects.filter(p => memberProjectIds.includes(String(p._id)));
+    }
 
     return NextResponse.json({ projects }, { status: 200 });
   } catch (error) {

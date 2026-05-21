@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   Settings,
+  Users,
   CheckSquare,
   MoreHorizontal
 } from "lucide-react"
@@ -27,6 +28,7 @@ import { AddProjectDialog } from "./add-project-dialog"
 import { useRouter } from "next/navigation"
 import { useDispatch, useWorkspace, useFilteredProjects } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "./user-avatar"
+import { signOut } from "next-auth/react"
 
 import { AddWorkspaceDialog } from "./add-workspace-dialog"
 
@@ -45,12 +47,15 @@ export function LeftSidebar() {
   const [addProjectOpen, setAddProjectOpen] = React.useState(false)
   const [addWorkspaceOpen, setAddWorkspaceOpen] = React.useState(false)
   const [settingsProjectId, setSettingsProjectId] = React.useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = React.useState(false)
   
   const me = users.find((u) => u.id === currentUserId)
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId)
+  const meEmail = me?.email
 
   const handleLogout = () => {
     localStorage.removeItem("syncly_user")
+    signOut({ callbackUrl: "/auth/login" })
     router.push("/auth/login")
   }
 
@@ -123,7 +128,28 @@ export function LeftSidebar() {
           badge="0"
         />
         <SidebarItem icon={<Search className="h-4 w-4" />} label="Search" />
-        <SidebarItem icon={<Settings className="h-4 w-4" />} label="Settings" />
+        <SidebarItem
+          icon={<Settings className="h-4 w-4" />}
+          label="Settings"
+          onClick={() => setSettingsOpen((v) => !v)}
+          disabled={!activeWorkspaceId}
+        />
+        {settingsOpen && (
+          <div className="pl-6 pr-2 space-y-0.5">
+            <button
+              type="button"
+              disabled={!activeWorkspaceId}
+              className={cn(
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                !activeWorkspaceId && "opacity-50 cursor-not-allowed",
+              )}
+              onClick={() => router.push("/settings/members")}
+            >
+              <Users className="h-4 w-4" />
+              <span className="flex-1 text-left truncate">Members</span>
+            </button>
+          </div>
+        )}
       </nav>
 
       <div className="mt-5 px-3 flex items-center justify-between">
@@ -239,7 +265,7 @@ export function LeftSidebar() {
                   {me?.name || "Guest User"}
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
-                  {me?.email || "guest@syncly.com"}
+                  {meEmail || "guest@syncly.com"}
                 </div>
               </div>
               <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -287,20 +313,27 @@ function SidebarItem({
   label,
   badge,
   active,
+  onClick,
+  disabled,
 }: {
   icon: React.ReactNode
   label: string
   badge?: string
   active?: boolean
+  onClick?: () => void
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
+      onClick={onClick}
+      disabled={disabled}
       className={cn(
         "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       <span className="text-muted-foreground">{icon}</span>

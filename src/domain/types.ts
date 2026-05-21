@@ -10,6 +10,7 @@ export type TaskPriority = "low" | "medium" | "high"
 export type User = {
   id: string
   name: string
+  email?: string
   initials: string
   color: string // tailwind bg class
 }
