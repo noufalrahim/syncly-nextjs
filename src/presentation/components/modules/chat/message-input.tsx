@@ -3,29 +3,104 @@
 import * as React from "react"
 import { AtSign, Paperclip, Plus, Send, Smile } from "lucide-react"
 import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
+import { cn } from "@/core/utils"
+import { UserAvatar } from "@/presentation/components/user-avatar"
+import type { User } from "@/domain/types"
+
+function getMentionQuery(text: string, selectionStart: number) {
+  const textBeforeCursor = text.slice(0, selectionStart)
+  const lastAtIdx = textBeforeCursor.lastIndexOf("@")
+  if (lastAtIdx === -1) return null
+  if (lastAtIdx > 0 && !/\s/.test(textBeforeCursor[lastAtIdx - 1])) {
+    return null
+  }
+  const textAfterAt = textBeforeCursor.slice(lastAtIdx + 1)
+  if (/\s/.test(textAfterAt)) {
+    return null
+  }
+  return {
+    query: textAfterAt,
+    index: lastAtIdx,
+  }
+}
+
+function renderHighlightedText(text: string, memberNames: string[]) {
+  if (!text) return ""
+  const displayText = text.endsWith("\n") ? text + " " : text
+  if (memberNames.length === 0) return displayText
+
+  const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = memberNames.map((name) => escapeRegExp(name)).join('|')
+  const regex = new RegExp(`(@(?:${pattern}))`, 'g')
+
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  let key = 0
+
+  while ((match = regex.exec(displayText)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(displayText.slice(lastIndex, match.index))
+    }
+    const token = match[0]
+    parts.push(
+      <span
+        key={key++}
+        className="bg-primary/25 rounded py-0.5"
+      >
+        {token}
+      </span>
+    )
+    lastIndex = match.index + token.length
+  }
+  if (lastIndex < displayText.length) {
+    parts.push(displayText.slice(lastIndex))
+  }
+  return parts
+}
 
 export function MessageInput() {
   const { channels, activeChannelId, users, currentUserId } = useWorkspace()
   const dispatch = useDispatch()
   const [value, setValue] = React.useState("")
+  const [mentionState, setMentionState] = React.useState<{ query: string; index: number } | null>(null)
+  const [activeIndex, setActiveIndex] = React.useState(0)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const overlayRef = React.useRef<HTMLDivElement>(null)
 
-  // Reset draft when switching channels
   React.useEffect(() => {
     setValue("")
+    setMentionState(null)
     textareaRef.current?.focus()
   }, [activeChannelId])
 
-  // Auto-resize
   React.useEffect(() => {
     const el = textareaRef.current
     if (!el) return
     el.style.height = "auto"
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = el.scrollTop
+    }
   }, [value])
+
+  const handleScroll = () => {
+    if (textareaRef.current && overlayRef.current) {
+      overlayRef.current.scrollTop = textareaRef.current.scrollTop
+    }
+  }
 
   const channel = channels.find((c) => c.id === activeChannelId)
   if (!channel) return null
+
+  const sortedMemberNames = React.useMemo(() => {
+    return channel.memberIds
+      .map((id) => users.find((u) => u.id === id))
+      .filter((u): u is User => Boolean(u))
+      .map((u) => u.name)
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length)
+  }, [channel, users])
 
   const placeholder =
     channel.type === "channel"
@@ -42,28 +117,129 @@ export function MessageInput() {
     if (!value.trim()) return
     dispatch({ type: "SEND_MESSAGE", channelId: activeChannelId, body: value })
     setValue("")
+    setMentionState(null)
+  }
+
+  const filteredUsers = React.useMemo(() => {
+    if (!mentionState) return []
+    const q = mentionState.query.toLowerCase()
+    const members = channel.memberIds.map((id) => users.find((u) => u.id === id)).filter((u): u is User => Boolean(u))
+    return members.filter((u) => u.name.toLowerCase().includes(q))
+  }, [users, mentionState, channel.memberIds])
+
+  React.useEffect(() => {
+    setActiveIndex(0)
+  }, [filteredUsers.length])
+
+  const insertMention = (user: User) => {
+    if (!mentionState) return
+    const el = textareaRef.current
+    if (!el) return
+    const before = value.slice(0, mentionState.index)
+    const after = value.slice(el.selectionStart)
+    const mentionText = `@${user.name} `
+    const newValue = before + mentionText + after
+    setValue(newValue)
+    setMentionState(null)
+    const newCursorPos = before.length + mentionText.length
+    setTimeout(() => {
+      el.focus()
+      el.setSelectionRange(newCursorPos, newCursorPos)
+    }, 0)
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setValue(val)
+    const pos = e.target.selectionStart
+    setMentionState(getMentionQuery(val, pos))
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionState && filteredUsers.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setActiveIndex((prev) => (prev + 1) % filteredUsers.length)
+        return
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault()
+        setActiveIndex((prev) => (prev - 1 + filteredUsers.length) % filteredUsers.length)
+        return
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault()
+        insertMention(filteredUsers[activeIndex])
+        return
+      }
+      if (e.key === "Escape") {
+        e.preventDefault()
+        setMentionState(null)
+        return
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       send()
     }
   }
 
+  const handleMentionClick = () => {
+    const el = textareaRef.current
+    if (!el) return
+    const pos = el.selectionStart
+    const before = value.slice(0, pos)
+    const after = value.slice(pos)
+    const newValue = before + "@" + after
+    setValue(newValue)
+    setMentionState({ query: "", index: pos })
+    setTimeout(() => {
+      el.focus()
+      const newPos = pos + 1
+      el.setSelectionRange(newPos, newPos)
+    }, 0)
+  }
+
   const canSend = value.trim().length > 0
 
   return (
-    <div className="px-4 pt-1 pb-4 bg-background">
-      <div className="rounded-lg border border-border bg-card focus-within:border-muted-foreground/30 transition-colors">
+    <div className="px-4 pt-1 pb-4 bg-background relative">
+      {mentionState && filteredUsers.length > 0 && (
+        <div className="absolute bottom-full left-4 mb-2 w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-lg z-50 p-1 space-y-0.5">
+          {filteredUsers.map((u, i) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => insertMention(u)}
+              className={cn(
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors hover:bg-accent hover:text-foreground",
+                i === activeIndex ? "bg-accent text-foreground" : "text-foreground"
+              )}
+            >
+              <UserAvatar user={u} size="xs" />
+              <span className="truncate">{u.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-lg border border-border bg-card focus-within:border-muted-foreground/30 transition-colors relative">
+        <div
+          ref={overlayRef}
+          className="absolute inset-0 pointer-events-none select-none text-transparent px-3 pt-3 pb-1 text-sm whitespace-pre-wrap break-words overflow-hidden z-0"
+        >
+          {renderHighlightedText(value, sortedMemberNames)}
+        </div>
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={handleChange}
           onKeyDown={onKeyDown}
+          onScroll={handleScroll}
           placeholder={placeholder}
           rows={1}
-          className="block w-full resize-none bg-transparent px-3 pt-3 pb-1 text-sm placeholder:text-muted-foreground focus:outline-none max-h-[180px]"
+          className="block w-full resize-none bg-transparent px-3 pt-3 pb-1 text-sm placeholder:text-muted-foreground focus:outline-none max-h-[180px] relative z-10"
         />
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="flex items-center gap-0.5">
@@ -73,7 +249,7 @@ export function MessageInput() {
             <ToolBtn label="Insert emoji">
               <Smile className="h-4 w-4" />
             </ToolBtn>
-            <ToolBtn label="Mention someone">
+            <ToolBtn label="Mention someone" onClick={handleMentionClick}>
               <AtSign className="h-4 w-4" />
             </ToolBtn>
             <ToolBtn label="More">
@@ -102,13 +278,16 @@ export function MessageInput() {
 function ToolBtn({
   children,
   label,
+  onClick,
 }: {
   children: React.ReactNode
   label: string
+  onClick?: () => void
 }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       aria-label={label}
       title={label}
       className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"

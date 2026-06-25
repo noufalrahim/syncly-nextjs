@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import connectToDatabase from "@/infrastructure/db/mongodb";
 import Note from "@/infrastructure/models/Note";
 
@@ -63,6 +64,14 @@ export async function PATCH(request: Request) {
     const note = await Note.findByIdAndUpdate(noteId, patch, { new: true });
 
     if (!note) {
+      const rawDoc = await mongoose.connection.db.collection('notes').findOne({ _id: new mongoose.Types.ObjectId(noteId) });
+      const rawDocString = await mongoose.connection.db.collection('notes').findOne({ _id: noteId });
+      if (rawDoc) {
+        const fallbackNote = await Note.findByIdAndUpdate(rawDoc._id, patch, { new: true });
+        if (fallbackNote) {
+          return NextResponse.json({ note: fallbackNote }, { status: 200 });
+        }
+      }
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
@@ -86,6 +95,13 @@ export async function DELETE(request: Request) {
     const note = await Note.findByIdAndDelete(noteId);
 
     if (!note) {
+      const rawDoc = await mongoose.connection.db.collection('notes').findOne({ _id: new mongoose.Types.ObjectId(noteId) });
+      if (rawDoc) {
+        const fallbackNote = await Note.findByIdAndDelete(rawDoc._id);
+        if (fallbackNote) {
+          return NextResponse.json({ message: "Note deleted successfully" }, { status: 200 });
+        }
+      }
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 

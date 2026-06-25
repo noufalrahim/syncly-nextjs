@@ -6,7 +6,7 @@ const TaskSchema = new mongoose.Schema(
     description: { type: String, default: "" },
     status: { type: String, default: "backlog" },
     priority: { type: String, default: "medium" },
-    assigneeId: { type: String, default: "u1" },
+    assigneeId: { type: String },
     assigneeIds: [{ type: String }],
     createdById: { type: String, default: "" },
     dueDate: { type: String },

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar as CalendarIcon, User as UserIcon, Flag, Tag as TagIcon, CornerDownLeft, X, ChevronDown } from "lucide-react"
+import { Calendar as CalendarIcon, User as UserIcon, Flag, Tag as TagIcon, CornerDownLeft, X, ChevronDown, Loader2 } from "lucide-react"
 import { Button } from "@/presentation/components/ui/button"
 import { Input } from "@/presentation/components/ui/input"
 import { cn } from "@/core/utils"
@@ -24,7 +24,7 @@ interface QuickAddTaskProps {
     dueDate?: string; 
     priority?: string;
     labels?: string[];
-  }) => void
+  }) => Promise<void>
   onCancel: () => void
 }
 
@@ -34,6 +34,7 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
   const [dueDate, setDueDate] = React.useState<string | undefined>()
   const [priority, setPriority] = React.useState<string>("medium")
   const [selectedTags, setSelectedTags] = React.useState<string[]>([])
+  const [isSaving, setIsSaving] = React.useState(false)
   
   const { users, tags, activeProjectId } = useWorkspace()
   const projectTags = tags.filter(t => t.projectId === activeProjectId)
@@ -43,16 +44,23 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
     inputRef.current?.focus()
   }, [])
 
-  const handleSave = () => {
-    if (title.trim()) {
-      onSave({ 
-        title: title.trim(),
-        assigneeId,
-        dueDate,
-        priority,
-        labels: selectedTags
-      })
-      setTitle("")
+  const handleSave = async () => {
+    if (title.trim() && !isSaving) {
+      setIsSaving(true)
+      try {
+        await onSave({ 
+          title: title.trim(),
+          assigneeId,
+          dueDate,
+          priority,
+          labels: selectedTags
+        })
+        setTitle("")
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsSaving(false)
+      }
     }
   }
 
@@ -86,10 +94,17 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
         <Button 
           size="sm" 
           onClick={handleSave}
-          className="h-7 px-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 gap-1.5"
+          disabled={isSaving || !title.trim()}
+          className="h-7 px-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 gap-1.5 font-medium"
         >
-          Save
-          <CornerDownLeft className="h-3 w-3" />
+          {isSaving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <>
+              Save
+              <CornerDownLeft className="h-3 w-3" />
+            </>
+          )}
         </Button>
       </div>
 
@@ -112,6 +127,11 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel>Assign to...</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setAssigneeId(undefined)}>
+              <UserIcon className="mr-2 h-4 w-4 text-muted-foreground/60" />
+              Unassigned
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {users.map(user => (
               <DropdownMenuItem key={user.id} onClick={() => setAssigneeId(user.id)}>

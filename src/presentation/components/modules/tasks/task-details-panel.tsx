@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { toast } from "sonner"
 import {
   AlignLeft,
   Bold,
@@ -184,12 +185,21 @@ function PanelBody({ task }: { task: Task }) {
     patch.history = updatedHistory
 
     dispatch({ type: "UPDATE_TASK", taskId: task.id, patch })
-
-    await fetch("/api/tasks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId: task.id, patch })
-    }).catch(err => console.error("Failed to persist task update", err))
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId: task.id, patch })
+      })
+      if (res.ok) {
+        toast.success("Task updated successfully")
+      } else {
+        toast.error("Failed to update task")
+      }
+    } catch (err) {
+      console.error("Failed to persist task update", err)
+      toast.error("Failed to update task")
+    }
   }
 
   function toggleTag(id: string) {
@@ -262,8 +272,17 @@ function PanelBody({ task }: { task: Task }) {
             type="button"
             onClick={async () => {
               dispatch({ type: "DELETE_TASK", taskId: task.id })
-              await fetch(`/api/tasks?taskId=${task.id}`, { method: "DELETE" })
-                .catch(err => console.error("Failed to delete task", err))
+              try {
+                const res = await fetch(`/api/tasks?taskId=${task.id}`, { method: "DELETE" })
+                if (res.ok) {
+                  toast.success("Task deleted successfully")
+                } else {
+                  toast.error("Failed to delete task")
+                }
+              } catch (err) {
+                console.error("Failed to delete task", err)
+                toast.error("Failed to delete task")
+              }
             }}
             className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             aria-label="Delete task"
@@ -313,13 +332,17 @@ function PanelBody({ task }: { task: Task }) {
 
             <PropLabel icon={<UserIcon className="h-3.5 w-3.5" />}>Assignee</PropLabel>
             <Select
-              value={localAssigneeId}
+              value={localAssigneeId || ""}
               onChange={(v) => setLocalAssigneeId(v)}
-              options={users.map((u) => ({
-                value: u.id,
-                label: u.name,
-                user: u,
-              }))}
+              options={[
+                { value: "", label: "Unassigned" },
+                ...users.map((u) => ({
+                  value: u.id,
+                  label: u.name,
+                  user: u,
+                }))
+              ]}
+              placeholder="Unassigned"
             />
 
             <PropLabel icon={<Clock className="h-3.5 w-3.5" />}>Priority</PropLabel>

@@ -36,6 +36,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/presentation/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/presentation/components/ui/dialog"
+import { Button } from "@/presentation/components/ui/button"
 
 // Tiptap Editor Imports
 import { useEditor, EditorContent } from "@tiptap/react"
@@ -506,9 +515,10 @@ function NoteEditor({ note, projects }: NoteEditorProps) {
     triggerSave({ title: val.trim() || "Untitled Note" })
   }
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+
   const handleDelete = async () => {
     if (isDeleting) return
-    if (!confirm("Are you sure you want to delete this note?")) return
 
     setIsDeleting(true)
     try {
@@ -523,6 +533,7 @@ function NoteEditor({ note, projects }: NoteEditorProps) {
       console.error("Failed to delete note:", e)
     } finally {
       setIsDeleting(false)
+      setDeleteDialogOpen(false)
     }
   }
 
@@ -592,7 +603,7 @@ function NoteEditor({ note, projects }: NoteEditorProps) {
         <button
           type="button"
           disabled={isDeleting}
-          onClick={handleDelete}
+          onClick={() => setDeleteDialogOpen(true)}
           className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/20 transition-all duration-200"
           aria-label="Delete note"
         >
@@ -685,6 +696,25 @@ function NoteEditor({ note, projects }: NoteEditorProps) {
           <EditorContent editor={editor} />
         </div>
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Note</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

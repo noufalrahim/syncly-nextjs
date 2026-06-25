@@ -44,6 +44,9 @@ type State = {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
   activeChannelId: string | null
+  channels: ChatChannel[]
+  messages: ChatMessage[]
+  activeTypingBotId: string | null
   loading: {
     workspaces: boolean
     projects: boolean
@@ -72,11 +75,19 @@ type Action =
   | { type: "UPDATE_NOTE"; noteId: string; patch: Partial<Note> }
   | { type: "SET_NOTES"; notes: Note[] }
   | { type: "SELECT_CHANNEL"; channelId: string }
-  | { type: "SEND_MESSAGE"; channelId: string; body: string }
+  | { type: "CREATE_CHANNEL"; name: string; description?: string }
+  | { type: "ADD_CHANNEL_MEMBER"; channelId: string; userId: string }
+  | { type: "SEND_MESSAGE"; channelId: string; body: string; parentId?: string; authorId?: string }
+  | { type: "ADD_AGENT"; agent: User }
+  | { type: "UPDATE_AGENT"; agentId: string; patch: Partial<User> }
+  | { type: "DELETE_AGENT"; agentId: string }
+  | { type: "SET_TYPING_BOT"; botId: string | null }
   | { type: "TOGGLE_REACTION"; messageId: string; emoji: string }
   | { type: "SET_USERS"; users: User[] }
   | { type: "SET_CURRENT_USER"; user: User | null }
   | { type: "ADD_PROJECT"; project: Project }
+  | { type: "UPDATE_PROJECT"; projectId: string; patch: Partial<Project> }
+  | { type: "DELETE_PROJECT"; projectId: string }
   | { type: "ADD_WORKSPACE"; workspace: Workspace }
   | { type: "SELECT_WORKSPACE"; workspaceId: string | null }
   | { type: "SET_WORKSPACES"; workspaces: Workspace[] }
@@ -88,6 +99,15 @@ type Action =
   | { type: "UPDATE_TAG"; tagId: string; patch: Partial<Tag> }
   | { type: "DELETE_TAG"; tagId: string }
   | { type: "SET_LOADING"; key: keyof State["loading"]; value: boolean }
+  | { type: "SET_DOCUMENTS"; documents: Doc[] }
+  | { type: "ADD_DOCUMENT"; document: Doc }
+  | { type: "DELETE_DOCUMENT"; documentId: string }
+  | { type: "SET_GOALS"; goals: any[] }
+  | { type: "ADD_GOAL"; goal: any }
+  | { type: "UPDATE_GOAL"; goalId: string; patch: any }
+  | { type: "DELETE_GOAL"; goalId: string }
+  | { type: "SET_MESSAGES"; messages: ChatMessage[] }
+  | { type: "SET_CUSTOM_CHANNELS"; channels: ChatChannel[] }
 
 
 const initialState: State = {
@@ -107,6 +127,7 @@ const initialState: State = {
   channels: [],
   messages: [],
   activeChannelId: null,
+  activeTypingBotId: null,
   workspaces: [],
   activeWorkspaceId: null,
   loading: {
@@ -249,16 +270,51 @@ function reducer(state: State, action: Action): State {
         ),
       }
     }
+    case "CREATE_CHANNEL": {
+      const newChan = {
+        id: `c-${Date.now()}`,
+        type: "channel" as const,
+        name: action.name,
+        description: action.description || "",
+        memberIds: state.currentUserId ? [state.currentUserId] : [],
+        unreadCount: 0,
+      }
+      return {
+        ...state,
+        channels: [...state.channels, newChan],
+        activeChannelId: newChan.id,
+      }
+    }
+    case "SET_CUSTOM_CHANNELS": {
+      const baseChannels = state.channels.filter(
+        (c) => c.id === "c-general" || c.id === "c-random" || c.id.startsWith("dm-")
+      )
+      return {
+        ...state,
+        channels: [...baseChannels, ...action.channels]
+      }
+    }
+    case "ADD_CHANNEL_MEMBER": {
+      return {
+        ...state,
+        channels: state.channels.map((c) =>
+          c.id === action.channelId
+            ? { ...c, memberIds: [...c.memberIds, action.userId] }
+            : c
+        ),
+      }
+    }
     case "SEND_MESSAGE": {
       const trimmed = action.body.trim()
       if (!trimmed) return state
       const msg: ChatMessage = {
         id: `m-${Date.now()}`,
         channelId: action.channelId,
-        authorId: state.currentUserId || "",
+        authorId: action.authorId || state.currentUserId || "",
         body: trimmed,
         createdAt: new Date().toISOString(),
         reactions: [],
+        parentId: action.parentId,
       }
       return { ...state, messages: [...state.messages, msg] }
     }
@@ -290,12 +346,141 @@ function reducer(state: State, action: Action): State {
         }),
       }
     }
-    case "SET_USERS":
-      return { ...state, users: action.users }
+    case "ADD_AGENT": {
+      const nextUsers = [...state.users, action.agent]
+      if (typeof window !== "undefined" && state.activeWorkspaceId) {
+        const currentAgents = nextUsers.filter((u) => u.isBot)
+        localStorage.setItem(`syncly_agents_${state.activeWorkspaceId}`, JSON.stringify(currentAgents))
+      }
+      return {
+        ...state,
+        users: nextUsers,
+      }
+    }
+    case "UPDATE_AGENT": {
+      const nextUsers = state.users.map((u) =>
+        u.id === action.agentId ? { ...u, ...action.patch } : u
+      )
+      if (typeof window !== "undefined" && state.activeWorkspaceId) {
+        const currentAgents = nextUsers.filter((u) => u.isBot)
+        localStorage.setItem(`syncly_agents_${state.activeWorkspaceId}`, JSON.stringify(currentAgents))
+      }
+      return {
+        ...state,
+        users: nextUsers,
+      }
+    }
+    case "DELETE_AGENT": {
+      const nextUsers = state.users.filter((u) => u.id !== action.agentId)
+      if (typeof window !== "undefined" && state.activeWorkspaceId) {
+        const currentAgents = nextUsers.filter((u) => u.isBot)
+        localStorage.setItem(`syncly_agents_${state.activeWorkspaceId}`, JSON.stringify(currentAgents))
+      }
+      const nextChannels = state.channels.map((c) => ({
+        ...c,
+        memberIds: c.memberIds.filter((id) => id !== action.agentId),
+      }))
+      return {
+        ...state,
+        users: nextUsers,
+        channels: nextChannels,
+      }
+    }
+    case "SET_TYPING_BOT": {
+      return {
+        ...state,
+        activeTypingBotId: action.botId,
+      }
+    }
+    case "SET_MESSAGES": {
+      return { ...state, messages: action.messages }
+    }
+    case "SET_USERS": {
+      let workspaceAgents: User[] = []
+      if (typeof window !== "undefined" && state.activeWorkspaceId) {
+        const saved = localStorage.getItem(`syncly_agents_${state.activeWorkspaceId}`)
+        if (saved) {
+          try {
+            workspaceAgents = JSON.parse(saved)
+          } catch (e) {
+            console.error("Failed to parse saved agents", e)
+          }
+        }
+      }
+      const combinedUsers = [...action.users, ...workspaceAgents]
+
+      const defaultChannels = [
+        {
+          id: "c-general",
+          type: "channel" as const,
+          name: "general",
+          description: "Company-wide announcements and work-based matters",
+          memberIds: combinedUsers.map((u) => u.id),
+          unreadCount: 0,
+        },
+        {
+          id: "c-random",
+          type: "channel" as const,
+          name: "random",
+          description: "Non-work talk and banter",
+          memberIds: combinedUsers.map((u) => u.id),
+          unreadCount: 0,
+        },
+      ]
+
+      const dmChannels = combinedUsers
+        .filter((u) => u.id !== state.currentUserId && !u.isBot)
+        .map((u) => ({
+          id: `dm-${u.id}`,
+          type: "dm" as const,
+          name: u.name,
+          memberIds: [state.currentUserId || "", u.id],
+          unreadCount: 0,
+        }))
+
+      let userCreatedChannels = state.channels.filter(
+        (c) => c.type === "channel" && c.id !== "c-general" && c.id !== "c-random"
+      )
+      if (userCreatedChannels.length === 0 && typeof window !== "undefined" && state.activeWorkspaceId) {
+        const saved = localStorage.getItem(`syncly_channels_${state.activeWorkspaceId}`)
+        if (saved) {
+          try {
+            userCreatedChannels = JSON.parse(saved)
+          } catch (e) {
+            console.error("Failed to parse saved channels", e)
+          }
+        }
+      }
+
+      const allChannels = [...defaultChannels, ...userCreatedChannels, ...dmChannels]
+
+      return {
+        ...state,
+        users: combinedUsers,
+        channels: allChannels,
+        activeChannelId: state.activeChannelId || "c-general",
+      }
+    }
     case "SET_CURRENT_USER":
       return { ...state, currentUserId: action.user?.id || null, users: action.user ? [action.user] : [] }
     case "ADD_PROJECT":
       return { ...state, projects: [...state.projects, action.project] }
+    case "UPDATE_PROJECT":
+      return {
+        ...state,
+        projects: state.projects.map((p) =>
+          p.id === action.projectId ? { ...p, ...action.patch } : p
+        ),
+      }
+    case "DELETE_PROJECT": {
+      const nextProjects = state.projects.filter((p) => p.id !== action.projectId)
+      const nextActiveId = state.activeProjectId === action.projectId ? (nextProjects[0]?.id || null) : state.activeProjectId
+      return {
+        ...state,
+        projects: nextProjects,
+        activeProjectId: nextActiveId,
+      }
+    }
     case "ADD_WORKSPACE":
       return { 
         ...state, 
@@ -332,6 +517,37 @@ function reducer(state: State, action: Action): State {
         ...state,
         tags: state.tags.filter((t) => t.id !== action.tagId),
       }
+    case "SET_DOCUMENTS":
+      return { ...state, documents: action.documents }
+    case "ADD_DOCUMENT":
+      return { ...state, documents: [action.document, ...state.documents] }
+    case "DELETE_DOCUMENT": {
+      const idsToDelete = new Set([action.documentId])
+      let sizeBefore: number
+      do {
+        sizeBefore = idsToDelete.size
+        for (const doc of state.documents) {
+          if (doc.parentId && idsToDelete.has(doc.parentId)) {
+            idsToDelete.add(doc.id)
+          }
+        }
+      } while (idsToDelete.size > sizeBefore)
+      return {
+        ...state,
+        documents: state.documents.filter((d) => !idsToDelete.has(d.id)),
+      }
+    }
+    case "SET_GOALS":
+      return { ...state, goals: action.goals }
+    case "ADD_GOAL":
+      return { ...state, goals: [action.goal, ...state.goals] }
+    case "UPDATE_GOAL":
+      return {
+        ...state,
+        goals: state.goals.map((g) => g.id === action.goalId ? { ...g, ...action.patch } : g)
+      }
+    case "DELETE_GOAL":
+      return { ...state, goals: state.goals.filter((g) => g.id !== action.goalId) }
     case "SET_LOADING":
       return {
         ...state,
@@ -341,6 +557,43 @@ function reducer(state: State, action: Action): State {
       return state
 
   }
+}
+
+function getBotResponse(botName: string, botPrompt: string, userMessage: string): string {
+  const msg = userMessage.toLowerCase()
+  const prompt = botPrompt.toLowerCase()
+
+  if (botName.includes("review") || prompt.includes("review") || prompt.includes("code")) {
+    if (msg.includes("code") || msg.includes("function") || msg.includes("review") || msg.includes("merge")) {
+      return `### Code Review Report (by ${botName})
+I have analyzed the submitted changes:
+- **Style & Consistency:** Clean and follows formatting standards.
+- **Complexity:** O(1) space complexity is optimal here.
+- **Potential Bugs:** No race conditions or memory leaks detected.
+- **Recommendation:** Approve and merge! ✅`
+    }
+    return `Hello! I am ${botName}, your automated code reviewer. Please paste some code or describe the PR, and I will check it against my system instructions: *"${botPrompt}"*.`
+  }
+
+  if (botName.includes("test") || prompt.includes("test") || prompt.includes("qa")) {
+    if (msg.includes("run") || msg.includes("test") || msg.includes("deploy") || msg.includes("build")) {
+      return `### Automated Test Suite Run (by ${botName})
+- **Unit Tests:** 24/24 passed (100% code coverage)
+- **Integration Tests:** 8/8 passed
+- **Performance:** Load testing completed in 1.4s (within SLAs)
+- **Status:** **PASSED** 🟢`
+    }
+    return `Hi! I am ${botName}, your testing assistant. I can run unit tests or integration simulations. Let me know when to start!`
+  }
+
+  if (botName.includes("support") || prompt.includes("help") || prompt.includes("customer")) {
+    return `Thank you for reaching out! As ${botName}, I've processed your query based on my prompt. Here is my support suggestion:\n- Please verify workspace permissions.\n- Let me know if you need escalation to a human engineer.`
+  }
+
+  return `[Agent Response]
+Hello! I am **${botName}**. I have read your message: "${userMessage}"
+I am responding based on my system instructions:
+> *"${botPrompt}"*`
 }
 
 function labelForStatus(s: TaskStatus) {
@@ -359,6 +612,8 @@ const DispatchCtx = React.createContext<React.Dispatch<Action> | null>(null)
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, initialState)
+  const [messagesLoadedFor, setMessagesLoadedFor] = React.useState<string | null>(null)
+  const [channelsLoadedFor, setChannelsLoadedFor] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const normalizeUser = (raw: any) => {
@@ -608,6 +863,161 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     fetchNotes();
   }, [state.activeWorkspaceId]);
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) {
+      dispatch({ type: "SET_DOCUMENTS", documents: [] });
+      return;
+    }
+
+    const fetchDocuments = async () => {
+      try {
+        const res = await fetch(`/api/documents?workspaceId=${state.activeWorkspaceId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.documents.map((d: any) => ({
+            id: d._id,
+            name: d.name,
+            type: d.type,
+            size: d.size,
+            parentId: d.parentId,
+            workspaceId: d.workspaceId,
+            ownerId: d.ownerId,
+            updatedAt: d.updatedAt || d.createdAt || new Date().toISOString(),
+          }));
+          dispatch({ type: "SET_DOCUMENTS", documents: mapped });
+        }
+      } catch (e) {
+        console.error("Failed to fetch documents", e);
+      }
+    };
+
+    fetchDocuments();
+  }, [state.activeWorkspaceId]);
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) {
+      dispatch({ type: "SET_GOALS", goals: [] });
+      return;
+    }
+
+    const fetchGoals = async () => {
+      try {
+        const res = await fetch(`/api/goals?workspaceId=${state.activeWorkspaceId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.goals.map((g: any) => ({
+            id: g._id,
+            title: g.title,
+            description: g.description,
+            progress: g.progress,
+            status: g.status,
+            dueDate: g.dueDate,
+            ownerId: g.ownerId,
+            workspaceId: g.workspaceId,
+          }));
+          dispatch({ type: "SET_GOALS", goals: mapped });
+        }
+      } catch (e) {
+        console.error("Failed to fetch goals", e);
+      }
+    };
+
+    fetchGoals();
+  }, [state.activeWorkspaceId]);
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) {
+      dispatch({ type: "SET_CUSTOM_CHANNELS", channels: [] })
+      setChannelsLoadedFor(null)
+      return
+    }
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`syncly_channels_${state.activeWorkspaceId}`)
+      if (saved) {
+        try {
+          const loaded = JSON.parse(saved)
+          dispatch({ type: "SET_CUSTOM_CHANNELS", channels: loaded })
+        } catch (e) {
+          console.error("Failed to parse saved channels", e)
+        }
+      } else {
+        dispatch({ type: "SET_CUSTOM_CHANNELS", channels: [] })
+      }
+      setChannelsLoadedFor(state.activeWorkspaceId)
+    }
+  }, [state.activeWorkspaceId])
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId || channelsLoadedFor !== state.activeWorkspaceId) return
+    const customChannels = state.channels.filter(
+      (c) => c.type === "channel" && c.id !== "c-general" && c.id !== "c-random"
+    )
+    if (customChannels.length > 0) {
+      localStorage.setItem(`syncly_channels_${state.activeWorkspaceId}`, JSON.stringify(customChannels))
+    } else {
+      localStorage.removeItem(`syncly_channels_${state.activeWorkspaceId}`)
+    }
+  }, [state.channels, state.activeWorkspaceId, channelsLoadedFor])
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) {
+      dispatch({ type: "SET_MESSAGES", messages: [] })
+      setMessagesLoadedFor(null)
+      return
+    }
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`syncly_messages_${state.activeWorkspaceId}`)
+      if (saved) {
+        try {
+          const loaded = JSON.parse(saved)
+          dispatch({ type: "SET_MESSAGES", messages: loaded })
+        } catch (e) {
+          console.error("Failed to parse saved messages", e)
+        }
+      } else {
+        dispatch({ type: "SET_MESSAGES", messages: [] })
+      }
+      setMessagesLoadedFor(state.activeWorkspaceId)
+    }
+  }, [state.activeWorkspaceId])
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId || messagesLoadedFor !== state.activeWorkspaceId) return
+    localStorage.setItem(`syncly_messages_${state.activeWorkspaceId}`, JSON.stringify(state.messages))
+  }, [state.messages, state.activeWorkspaceId, messagesLoadedFor])
+
+  React.useEffect(() => {
+    if (state.messages.length === 0) return
+    const lastMsg = state.messages[state.messages.length - 1]
+    const author = state.users.find((u) => u.id === lastMsg.authorId)
+    if (author?.isBot) return
+
+    const mentionedBots = state.users.filter(
+      (u) => u.isBot && lastMsg.body.includes(`@${u.name}`)
+    )
+    if (mentionedBots.length === 0) return
+
+    const channel = state.channels.find((c) => c.id === lastMsg.channelId)
+    if (!channel) return
+
+    const botToTrigger = mentionedBots.find((bot) => channel.memberIds.includes(bot.id))
+    if (!botToTrigger) return
+
+    dispatch({ type: "SET_TYPING_BOT", botId: botToTrigger.id })
+    const timeout = setTimeout(() => {
+      dispatch({
+        type: "SEND_MESSAGE",
+        channelId: lastMsg.channelId,
+        body: getBotResponse(botToTrigger.name, botToTrigger.prompt || "", lastMsg.body),
+        parentId: lastMsg.parentId,
+        authorId: botToTrigger.id,
+      })
+      dispatch({ type: "SET_TYPING_BOT", botId: null })
+    }, 1500)
+
+    return () => clearTimeout(timeout)
+  }, [state.messages, state.users, state.channels])
 
   return (
     <StateCtx.Provider value={state}>

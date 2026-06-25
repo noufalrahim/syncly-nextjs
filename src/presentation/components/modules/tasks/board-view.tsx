@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core"
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable"
 import { Plus } from "lucide-react"
+import { toast } from "sonner"
 import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
 import type { Task, TaskStatus } from "@/domain/types"
 import { BoardColumn, BoardColumnSkeleton } from "./board-column"
@@ -176,7 +177,7 @@ export function BoardView() {
       description: "",
       status: status ?? "backlog",
       priority: data?.priority ?? "medium",
-      assigneeId: data?.assigneeId ?? "u1",
+      assigneeId: data?.assigneeId || "",
       dueDate: data?.dueDate ?? defaultDueDate.toISOString(),
       startDate: now,
       labels: data?.labels ?? [],
@@ -210,9 +211,13 @@ export function BoardView() {
         if (!data) {
           dispatch({ type: "SELECT_TASK", taskId: saved.task._id });
         }
+        toast.success("Task created successfully");
+      } else {
+        toast.error("Failed to create task");
       }
     } catch (error) {
       console.error("Create task error:", error);
+      toast.error("Failed to create task");
     }
   }
 

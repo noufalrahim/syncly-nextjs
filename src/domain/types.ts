@@ -13,6 +13,8 @@ export type User = {
   email?: string
   initials: string
   color: string // tailwind bg class
+  isBot?: boolean
+  prompt?: string
 }
 
 export type Tag = {
@@ -151,6 +153,7 @@ export type ChatMessage = {
   createdAt: string // ISO
   reactions: ChatReaction[]
   edited?: boolean
+  parentId?: string
 }
 
 export type TaskView = "board" | "table" | "list" | "gantt" | "calendar"

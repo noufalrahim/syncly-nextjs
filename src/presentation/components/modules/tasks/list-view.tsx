@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import { ChevronDown, ChevronRight, Edit2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@/core/utils"
 import { PRIORITY_META, STATUS_META, type TaskStatus } from "@/domain/types"
-import { useDispatch, useProjectTasks, useWorkspace } from "@/presentation/state/workspace-store"
+import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
 import { getHexColor } from "@/domain/label-colors"
@@ -16,24 +17,12 @@ function formatDate(iso: string) {
   })
 }
 
-const ORDER: TaskStatus[] = ["in-progress", "backlog", "on-hold", "done", "cancelled"]
 export function ListView() {
   const tasks = useProjectTasks()
   const { users, loading } = useWorkspace()
+  const projectColumns = useProjectColumns()
   const dispatch = useDispatch()
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({})
-
-  const grouped = React.useMemo(() => {
-    const g: Record<TaskStatus, typeof tasks> = {
-      cancelled: [],
-      "on-hold": [],
-      backlog: [],
-      "in-progress": [],
-      done: [],
-    }
-    for (const t of tasks) g[t.status].push(t)
-    return g
-  }, [tasks])
 
   return (
     <div className="flex-1 overflow-auto">
@@ -53,16 +42,15 @@ export function ListView() {
             </div>
           ))
         ) : (
-          ORDER.map((status) => {
-            const items = grouped[status]
-            const meta = STATUS_META[status]
-            const isCollapsed = collapsed[status]
+          projectColumns.map((col) => {
+            const items = tasks.filter((t) => t.columnId === col.id)
+            const isCollapsed = collapsed[col.id]
             return (
-              <section key={status} className="mb-1">
+              <section key={col.id} className="mb-1">
                 <button
                   type="button"
                   onClick={() =>
-                    setCollapsed((c) => ({ ...c, [status]: !c[status] }))
+                    setCollapsed((c) => ({ ...c, [col.id]: !c[col.id] }))
                   }
                   className="w-full flex items-center gap-2 px-2 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground rounded transition-colors"
                 >
@@ -71,8 +59,8 @@ export function ListView() {
                   ) : (
                     <ChevronDown className="h-3.5 w-3.5" />
                   )}
-                  <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
-                  <span className="text-foreground">{meta.label}</span>
+                  <span className="h-2 w-2 rounded-full shadow-sm" style={{ backgroundColor: getHexColor(col.color) }} />
+                  <span className="text-foreground">{col.label}</span>
                   <span className="text-xs font-normal text-muted-foreground">
                     {items.length}
                   </span>
@@ -90,7 +78,7 @@ export function ListView() {
                           }
                           className="group flex items-center gap-3 px-3 py-2.5 hover:bg-accent/40 cursor-pointer border-b border-border last:border-b-0 transition-colors"
                         >
-                          <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+                          <span className="h-1.5 w-1.5 rounded-full shadow-sm" style={{ backgroundColor: getHexColor(col.color) }} />
                           <span className="text-sm font-medium flex-1 truncate">{t.title}</span>
                           <span
                             className={cn(
@@ -123,8 +111,17 @@ export function ListView() {
                               onClick={async (e) => {
                                 e.stopPropagation()
                                 dispatch({ type: "DELETE_TASK", taskId: t.id })
-                                await fetch(`/api/tasks?taskId=${t.id}`, { method: "DELETE" })
-                                  .catch(err => console.error("Failed to delete task", err))
+                                try {
+                                  const res = await fetch(`/api/tasks?taskId=${t.id}`, { method: "DELETE" })
+                                  if (res.ok) {
+                                    toast.success("Task deleted successfully")
+                                  } else {
+                                    toast.error("Failed to delete task")
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to delete task", err)
+                                  toast.error("Failed to delete task")
+                                }
                               }}
                               className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                               aria-label="Delete task"

@@ -60,7 +60,7 @@ export function BoardColumn({
     dueDate?: string;
     priority?: string;
     labels?: string[];
-  }) => void
+  }) => Promise<void>
 }) {
   const [isAdding, setIsAdding] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
@@ -204,8 +204,8 @@ export function BoardColumn({
           {isAdding ? (
             <div className="relative pt-1">
               <QuickAddTask 
-                onSave={(data) => {
-                  onAddTask(data)
+                onSave={async (data) => {
+                  await onAddTask(data)
                   setIsAdding(false)
                 }} 
                 onCancel={() => setIsAdding(false)} 

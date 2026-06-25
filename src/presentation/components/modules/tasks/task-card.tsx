@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { toast } from "sonner"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { CalendarDays, MessageSquare, Paperclip, Trash2 } from "lucide-react"
@@ -108,8 +109,17 @@ export function TaskCard({
           onClick={async (e) => {
             e.stopPropagation()
             dispatch({ type: "DELETE_TASK", taskId: task.id })
-            await fetch(`/api/tasks?taskId=${task.id}`, { method: "DELETE" })
-              .catch(err => console.error("Failed to delete task", err))
+            try {
+              const res = await fetch(`/api/tasks?taskId=${task.id}`, { method: "DELETE" })
+              if (res.ok) {
+                toast.success("Task deleted successfully")
+              } else {
+                toast.error("Failed to delete task")
+              }
+            } catch (err) {
+              console.error("Failed to delete task", err)
+              toast.error("Failed to delete task")
+            }
           }}
           className="pointer-events-auto opacity-0 group-hover:opacity-100 h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
           aria-label="Delete task"

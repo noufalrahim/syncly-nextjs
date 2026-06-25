@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/core/utils"
+import { toast } from "sonner"
 import { labelDotClass, getHexColor } from "@/domain/label-colors"
 import { PRIORITY_META, STATUS_META } from "@/domain/types"
 import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
@@ -272,8 +273,17 @@ export function TableView() {
                           onClick={async (e) => {
                             e.stopPropagation()
                             dispatch({ type: "DELETE_TASK", taskId: t.id })
-                            await fetch(`/api/tasks?taskId=${t.id}`, { method: "DELETE" })
-                              .catch(err => console.error("Failed to delete task", err))
+                            try {
+                              const res = await fetch(`/api/tasks?taskId=${t.id}`, { method: "DELETE" })
+                              if (res.ok) {
+                                toast.success("Task deleted successfully")
+                              } else {
+                                toast.error("Failed to delete task")
+                              }
+                            } catch (err) {
+                              console.error("Failed to delete task", err)
+                              toast.error("Failed to delete task")
+                            }
                           }}
                           className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                           aria-label="Delete task"

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Hash, MessageSquarePlus, Smile } from "lucide-react"
+import { Hash, MessageSquarePlus, Smile, MessageSquare } from "lucide-react"
 import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
@@ -9,8 +9,8 @@ import type { ChatMessage, User } from "@/domain/types"
 
 const QUICK_REACTIONS = ["👍", "🎉", "🔥", "😂", "🙌", "👀"]
 
-export function MessageList() {
-  const { messages, activeChannelId, users, channels, currentUserId } = useWorkspace()
+export function MessageList({ onOpenThread }: { onOpenThread: (message: ChatMessage) => void }) {
+  const { messages, activeChannelId, users, channels, currentUserId, activeTypingBotId } = useWorkspace()
   const dispatch = useDispatch()
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const bottomRef = React.useRef<HTMLDivElement>(null)
@@ -20,15 +20,25 @@ export function MessageList() {
   const channelMessages = React.useMemo(
     () =>
       messages
-        .filter((m) => m.channelId === activeChannelId)
+        .filter((m) => m.channelId === activeChannelId && !m.parentId)
         .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt)),
     [messages, activeChannelId],
   )
 
-  // auto-scroll to bottom on channel change or new message
+  const typingBot = React.useMemo(() => {
+    if (!activeTypingBotId) return null
+    const bot = users.find((u) => u.id === activeTypingBotId)
+    if (!bot || !channel?.memberIds.includes(bot.id)) return null
+    const lastMsg = channelMessages[channelMessages.length - 1]
+    if (lastMsg && !lastMsg.parentId && lastMsg.body.includes(`@${bot.name}`)) {
+      return bot
+    }
+    return null
+  }, [activeTypingBotId, users, channel, channelMessages])
+
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" })
-  }, [activeChannelId, channelMessages.length])
+  }, [activeChannelId, channelMessages.length, typingBot])
 
   const userMap = React.useMemo(
     () => Object.fromEntries(users.map((u) => [u.id, u])) as Record<string, User>,
@@ -72,6 +82,8 @@ export function MessageList() {
         onReact={(messageId, emoji) =>
           dispatch({ type: "TOGGLE_REACTION", messageId, emoji })
         }
+        allMessages={messages}
+        onOpenThread={onOpenThread}
       />,
     )
   }
@@ -113,7 +125,19 @@ export function MessageList() {
         </div>
       )}
 
-      <div className="py-2">{renderItems}</div>
+      <div className="py-2">
+        {renderItems}
+        {typingBot && (
+          <div className="flex items-center gap-2 px-6 py-2 text-xs text-muted-foreground animate-pulse">
+            <span className="flex gap-0.5 items-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+            </span>
+            <span>🤖 <span className="font-semibold">{typingBot.name}</span> is typing...</span>
+          </div>
+        )}
+      </div>
       <div ref={bottomRef} />
     </div>
   )
@@ -153,12 +177,16 @@ function MessageGroup({
   currentUserId,
   userMap,
   onReact,
+  allMessages,
+  onOpenThread,
 }: {
   author: User | undefined
   messages: ChatMessage[]
   currentUserId: string
   userMap: Record<string, User>
   onReact: (messageId: string, emoji: string) => void
+  allMessages: ChatMessage[]
+  onOpenThread: (message: ChatMessage) => void
 }) {
   const [first, ...rest] = messages
   return (
@@ -180,6 +208,8 @@ function MessageGroup({
               currentUserId={currentUserId}
               userMap={userMap}
               onReact={onReact}
+              allMessages={allMessages}
+              onOpenThread={onOpenThread}
             />
           </div>
         </div>
@@ -191,6 +221,8 @@ function MessageGroup({
           currentUserId={currentUserId}
           userMap={userMap}
           onReact={onReact}
+          allMessages={allMessages}
+          onOpenThread={onOpenThread}
         />
       ))}
     </div>
@@ -202,11 +234,15 @@ function ContinuationMessage({
   currentUserId,
   userMap,
   onReact,
+  allMessages,
+  onOpenThread,
 }: {
   message: ChatMessage
   currentUserId: string
   userMap: Record<string, User>
   onReact: (messageId: string, emoji: string) => void
+  allMessages: ChatMessage[]
+  onOpenThread: (message: ChatMessage) => void
 }) {
   return (
     <div className="group/msg relative px-6 py-0.5 hover:bg-accent/30 transition-colors">
@@ -222,6 +258,8 @@ function ContinuationMessage({
             currentUserId={currentUserId}
             userMap={userMap}
             onReact={onReact}
+            allMessages={allMessages}
+            onOpenThread={onOpenThread}
           />
         </div>
       </div>
@@ -234,16 +272,21 @@ function MessageBody({
   currentUserId,
   userMap,
   onReact,
+  allMessages,
+  onOpenThread,
 }: {
   message: ChatMessage
   currentUserId: string
   userMap: Record<string, User>
   onReact: (messageId: string, emoji: string) => void
+  allMessages: ChatMessage[]
+  onOpenThread: (message: ChatMessage) => void
 }) {
+  const repliesCount = allMessages.filter((m) => m.parentId === message.id).length
   return (
     <div className="relative">
       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
-        {renderInline(message.body)}
+        {renderInline(message.body, Object.values(userMap))}
         {message.edited && (
           <span className="ml-1 text-[10px] text-muted-foreground">(edited)</span>
         )}
@@ -276,25 +319,36 @@ function MessageBody({
           })}
         </div>
       )}
-      <ReactionToolbar messageId={message.id} onReact={onReact} />
+      {repliesCount > 0 && (
+        <button
+          type="button"
+          onClick={() => onOpenThread(message)}
+          className="mt-1.5 flex items-center gap-1.5 text-xs text-primary font-medium hover:underline px-2 py-0.5 rounded bg-primary/10 border border-primary/20 w-fit cursor-pointer"
+        >
+          💬 {repliesCount} {repliesCount === 1 ? "reply" : "replies"}
+        </button>
+      )}
+      <ReactionToolbar message={message} onReact={onReact} onOpenThread={onOpenThread} />
     </div>
   )
 }
 
 function ReactionToolbar({
-  messageId,
+  message,
   onReact,
+  onOpenThread,
 }: {
-  messageId: string
+  message: ChatMessage
   onReact: (messageId: string, emoji: string) => void
+  onOpenThread: (message: ChatMessage) => void
 }) {
   return (
-    <div className="absolute -top-4 right-0 hidden group-hover/msg:flex items-center gap-0.5 rounded-md border border-border bg-popover shadow-md p-0.5">
+    <div className="absolute -top-4 right-0 hidden group-hover/msg:flex items-center gap-0.5 rounded-md border border-border bg-popover shadow-md p-0.5 z-20">
       {QUICK_REACTIONS.map((e) => (
         <button
           key={e}
           type="button"
-          onClick={() => onReact(messageId, e)}
+          onClick={() => onReact(message.id, e)}
           className="h-7 w-7 inline-flex items-center justify-center rounded text-base hover:bg-accent transition-colors"
           aria-label={`React with ${e}`}
         >
@@ -302,6 +356,15 @@ function ReactionToolbar({
         </button>
       ))}
       <span className="h-5 w-px bg-border mx-0.5" aria-hidden />
+      <button
+        type="button"
+        onClick={() => onOpenThread(message)}
+        className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+        aria-label="Reply in thread"
+        title="Reply in thread"
+      >
+        <MessageSquare className="h-4 w-4" />
+      </button>
       <button
         type="button"
         className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
@@ -323,10 +386,27 @@ function formatTime(iso: string, withDate = false) {
   return time
 }
 
-// Lightweight inline renderer: bolds **text** and linkifies http(s) URLs.
-function renderInline(text: string): React.ReactNode[] {
+export function renderInline(text: string, users: User[] = []): React.ReactNode[] {
   const parts: React.ReactNode[] = []
-  const regex = /(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g
+  if (!text) return parts
+
+  const escapeRegExp = (string: string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
+  const sortedNames = [...users]
+    .map((u) => u.name)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+
+  let regex: RegExp
+  if (sortedNames.length > 0) {
+    const namesPattern = sortedNames.map((name) => escapeRegExp(name)).join('|')
+    regex = new RegExp(`(\\*\\*[^*]+\\*\\*|https?:\\/\\/[^\\s]+|@(?:${namesPattern}))`, 'g')
+  } else {
+    regex = /(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g
+  }
+
   let lastIndex = 0
   let match: RegExpExecArray | null
   let key = 0
@@ -341,7 +421,7 @@ function renderInline(text: string): React.ReactNode[] {
           {token.slice(2, -2)}
         </strong>,
       )
-    } else {
+    } else if (token.startsWith("http://") || token.startsWith("https://")) {
       parts.push(
         <a
           key={`l-${key++}`}
@@ -352,6 +432,15 @@ function renderInline(text: string): React.ReactNode[] {
         >
           {token}
         </a>,
+      )
+    } else if (token.startsWith("@")) {
+      parts.push(
+        <span
+          key={`m-${key++}`}
+          className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium text-sm animate-pulse-once"
+        >
+          {token}
+        </span>,
       )
     }
     lastIndex = match.index + token.length

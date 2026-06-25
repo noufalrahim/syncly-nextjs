@@ -6,11 +6,29 @@ import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { PresenceDot } from "./presence-dot"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/presentation/components/ui/dialog"
+import { Button } from "@/presentation/components/ui/button"
+import { Input } from "@/presentation/components/ui/input"
+import { Label } from "@/presentation/components/ui/label"
+import { Textarea } from "@/presentation/components/ui/textarea"
 
 export function ChannelSidebar() {
-  const { channels, activeChannelId, users, currentUserId } = useWorkspace()
+  const { channels, activeChannelId, users, currentUserId, workspaces, activeWorkspaceId } = useWorkspace()
   const dispatch = useDispatch()
   const [query, setQuery] = React.useState("")
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [chanName, setChanName] = React.useState("")
+  const [chanDesc, setChanDesc] = React.useState("")
+
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId)
+  const isAdmin = activeWorkspace?.ownerId === currentUserId
 
   const channelList = channels.filter((c) => c.type === "channel")
   const dmList = channels.filter((c) => c.type === "dm")
@@ -49,7 +67,11 @@ export function ChannelSidebar() {
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         {/* Channels */}
-        <SectionHeader label="Channels" />
+        <SectionHeader
+          label="Channels"
+          showAdd={isAdmin}
+          onAdd={() => setCreateOpen(true)}
+        />
         <ul className="mt-1 mb-3 space-y-0.5">
           {filteredChannels.map((c) => {
             const active = c.id === activeChannelId
@@ -151,21 +173,83 @@ export function ChannelSidebar() {
           <div className="text-xs text-muted-foreground capitalize">{myStatus}</div>
         </div>
       </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-border">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!chanName.trim()) return
+              dispatch({ type: "CREATE_CHANNEL", name: chanName.trim(), description: chanDesc.trim() })
+              setChanName("")
+              setChanDesc("")
+              setCreateOpen(false)
+            }}
+            className="space-y-4"
+          >
+            <DialogHeader>
+              <DialogTitle>Create Group Channel</DialogTitle>
+              <DialogDescription>Create a new channel for team discussions.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1">
+                <Label htmlFor="channel-name" className="text-xs uppercase font-semibold text-muted-foreground">Channel Name</Label>
+                <Input
+                  id="channel-name"
+                  placeholder="e.g. design-assets"
+                  value={chanName}
+                  onChange={(e) => setChanName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="channel-desc" className="text-xs uppercase font-semibold text-muted-foreground">Description</Label>
+                <Textarea
+                  id="channel-desc"
+                  placeholder="What is this channel about?"
+                  value={chanDesc}
+                  onChange={(e) => setChanDesc(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!chanName.trim()}>
+                Create
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </aside>
   )
 }
 
-function SectionHeader({ label }: { label: string }) {
+function SectionHeader({
+  label,
+  showAdd = false,
+  onAdd,
+}: {
+  label: string
+  showAdd?: boolean
+  onAdd?: () => void
+}) {
   return (
-    <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="group flex items-center justify-between px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
       <span>{label}</span>
-      <button
-        type="button"
-        className="opacity-0 group-hover:opacity-100 hover:text-foreground"
-        aria-label={`Add ${label}`}
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
+      {showAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="opacity-0 group-hover:opacity-100 hover:text-foreground transition-opacity"
+          aria-label={`Add ${label}`}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }

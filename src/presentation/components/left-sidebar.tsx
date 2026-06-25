@@ -16,6 +16,7 @@ import {
 import { Skeleton } from "@/presentation/components/ui/skeleton"
 import { cn } from "@/core/utils"
 import { ProjectSettingsDialog } from "./project-settings-dialog"
+import { WorkspaceSettingsDialog } from "./workspace-settings-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,7 @@ export function LeftSidebar() {
   const [addWorkspaceOpen, setAddWorkspaceOpen] = React.useState(false)
   const [settingsProjectId, setSettingsProjectId] = React.useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const [workspaceSettingsOpen, setWorkspaceSettingsOpen] = React.useState(false)
   
   const me = users.find((u) => u.id === currentUserId)
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId)
@@ -62,54 +64,68 @@ export function LeftSidebar() {
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col bg-sidebar border-r border-sidebar-border">
       {/* Workspace switcher */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <div className="flex items-center justify-between pr-2">
+        <div className="flex-1 min-w-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 px-3 py-3 m-2 mr-1 rounded-md hover:bg-sidebar-accent transition-colors text-left group min-w-0"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold text-sm shrink-0">
+                  {activeWorkspace?.name?.[0] || "S"}
+                </span>
+                <span className="flex-1 min-w-0">
+                  {loading.workspaces ? (
+                    <>
+                      <Skeleton className="h-4 w-24 mb-1" />
+                      <Skeleton className="h-3 w-16" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="block text-sm font-semibold truncate group-hover:text-sidebar-accent-foreground">
+                        {activeWorkspace?.name || "No Workspace"}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground truncate uppercase tracking-tight">
+                        {activeWorkspace?.plan || "Personal"} Plan
+                      </span>
+                    </>
+                  )}
+                </span>
+                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 ml-2">
+              <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {workspaces.map((ws) => (
+                <DropdownMenuItem 
+                  key={ws.id} 
+                  onClick={() => dispatch({ type: "SELECT_WORKSPACE", workspaceId: ws.id })}
+                  className="cursor-pointer"
+                >
+                  {ws.name}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer" onClick={() => setAddWorkspaceOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                <span>Add Workspace</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {activeWorkspace && (
           <button
             type="button"
-            className="flex items-center gap-2 px-3 py-3 m-2 rounded-md hover:bg-sidebar-accent transition-colors text-left group"
+            onClick={() => setWorkspaceSettingsOpen(true)}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors shrink-0"
+            title="Workspace settings"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold text-sm shrink-0">
-              {activeWorkspace?.name?.[0] || "S"}
-            </span>
-            <span className="flex-1 min-w-0">
-              {loading.workspaces ? (
-                <>
-                  <Skeleton className="h-4 w-24 mb-1" />
-                  <Skeleton className="h-3 w-16" />
-                </>
-              ) : (
-                <>
-                  <span className="block text-sm font-semibold truncate group-hover:text-sidebar-accent-foreground">
-                    {activeWorkspace?.name || "No Workspace"}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground truncate uppercase tracking-tight">
-                    {activeWorkspace?.plan || "Personal"} Plan
-                  </span>
-                </>
-              )}
-            </span>
-            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+            <MoreHorizontal className="h-4 w-4" />
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56 ml-2">
-          <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {workspaces.map((ws) => (
-            <DropdownMenuItem 
-              key={ws.id} 
-              onClick={() => dispatch({ type: "SELECT_WORKSPACE", workspaceId: ws.id })}
-              className="cursor-pointer"
-            >
-              {ws.name}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="cursor-pointer" onClick={() => setAddWorkspaceOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            <span>Add Workspace</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        )}
+      </div>
 
       <div className="px-2 pb-2">
         <SidebarSearch />
@@ -303,6 +319,10 @@ export function LeftSidebar() {
         open={settingsProjectId !== null}
         onOpenChange={(open) => !open && setSettingsProjectId(null)}
         projectId={settingsProjectId}
+      />
+      <WorkspaceSettingsDialog
+        open={workspaceSettingsOpen}
+        onOpenChange={setWorkspaceSettingsOpen}
       />
     </aside>
   )

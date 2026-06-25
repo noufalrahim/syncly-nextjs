@@ -19,11 +19,14 @@ import {
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { cn } from "@/core/utils"
 import { STATUS_META } from "@/domain/types"
-import { useWorkspace } from "@/presentation/state/workspace-store"
+import { useWorkspace, useProjectTasks, useProjectColumns } from "@/presentation/state/workspace-store"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
+import { getHexColor } from "@/domain/label-colors"
 
 export function AnalyticsModule() {
-  const { tasks, users, loading } = useWorkspace()
+  const tasks = useProjectTasks()
+  const projectColumns = useProjectColumns()
+  const { users, loading } = useWorkspace()
 
   const stats = React.useMemo(() => {
     const total = tasks.length
@@ -39,13 +42,13 @@ export function AnalyticsModule() {
   }, [tasks])
 
   const completionData = React.useMemo(() => {
-    // last 14 days, fake completion based on `createdAt`
     const days: { day: string; completed: number; created: number }[] = []
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     for (let i = 13; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
+
       const created = tasks.filter((t) => {
         const c = new Date(t.createdAt)
         return (
@@ -54,9 +57,18 @@ export function AnalyticsModule() {
           c.getDate() === d.getDate()
         )
       }).length
-      // synthesize a rolling completion count
-      const seed = (i * 7 + 3) % 11
-      const completed = Math.max(0, Math.round((seed + i / 2) / 1.4))
+
+      const completed = tasks.filter((t) => {
+        if (t.status !== "done") return false
+        const doneEntry = t.history?.find((h) => h.type === "status" && h.message.includes("Done"))
+        const compDate = doneEntry ? new Date(doneEntry.createdAt) : new Date(t.createdAt)
+        return (
+          compDate.getFullYear() === d.getFullYear() &&
+          compDate.getMonth() === d.getMonth() &&
+          compDate.getDate() === d.getDate()
+        )
+      }).length
+
       days.push({
         day: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         completed,
@@ -67,6 +79,15 @@ export function AnalyticsModule() {
   }, [tasks])
 
   const statusData = React.useMemo(() => {
+    if (projectColumns.length > 0) {
+      return projectColumns.map((col) => ({
+        name: col.label,
+        value: tasks.filter((t) => t.columnId === col.id).length,
+        key: col.id,
+        color: col.color,
+        status: col.status || "backlog",
+      }))
+    }
     return (
       Object.entries(STATUS_META) as [
         keyof typeof STATUS_META,
@@ -76,8 +97,10 @@ export function AnalyticsModule() {
       name: meta.label,
       value: tasks.filter((t) => t.status === id).length,
       key: id,
+      color: undefined,
+      status: id,
     }))
-  }, [tasks])
+  }, [tasks, projectColumns])
 
   const STATUS_COLORS: Record<string, string> = {
     cancelled: "var(--color-chart-5)",
@@ -92,8 +115,7 @@ export function AnalyticsModule() {
       name: u.initials,
       fullName: u.name,
       tasks: tasks.filter((t) => t.assigneeId === u.id).length,
-      done: tasks.filter((t) => t.assigneeId === u.id && t.status === "done")
-        .length,
+      done: tasks.filter((t) => t.assigneeId === u.id && t.status === "done").length,
     }))
   }, [users, tasks])
 
@@ -112,24 +134,24 @@ export function AnalyticsModule() {
             <KpiCard
               label="Total tasks"
               value={stats.total}
-              delta={12}
+              delta={stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0}
               positive
             />
             <KpiCard
               label="Completed"
               value={stats.done}
-              delta={8}
+              delta={stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0}
               positive
             />
             <KpiCard
               label="In progress"
               value={stats.inProgress}
-              delta={-3}
+              delta={stats.total > 0 ? Math.round((stats.inProgress / stats.total) * 100) : 0}
             />
             <KpiCard
               label="Overdue"
               value={stats.overdue}
-              delta={-2}
+              delta={stats.total > 0 ? Math.round((stats.overdue / stats.total) * 100) : 0}
               positive
               inverse
             />
@@ -174,6 +196,7 @@ export function AnalyticsModule() {
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
+                  allowDecimals={false}
                 />
                 <Tooltip content={<DarkTooltip />} />
                 <Area
@@ -215,12 +238,12 @@ export function AnalyticsModule() {
                   stroke="var(--color-background)"
                   strokeWidth={2}
                 >
-                  {statusData.map((entry) => (
-                    <Cell
-                      key={entry.key}
-                      fill={STATUS_COLORS[entry.key] ?? "var(--color-chart-5)"}
-                    />
-                  ))}
+                  {statusData.map((entry) => {
+                    const fill = entry.color
+                      ? getHexColor(entry.color)
+                      : (STATUS_COLORS[entry.status] ?? "var(--color-chart-5)")
+                    return <Cell key={entry.key} fill={fill} />
+                  })}
                 </Pie>
                 <Tooltip content={<DarkTooltip />} />
                 <Legend
@@ -258,6 +281,7 @@ export function AnalyticsModule() {
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
+                  allowDecimals={false}
                 />
                 <Tooltip content={<DarkTooltip />} />
                 <Bar
@@ -299,7 +323,6 @@ function KpiCard({
   inverse?: boolean
 }) {
   const isUp = delta >= 0
-  // For "overdue", lower is better — flip the color logic with `inverse`
   const good = inverse ? !isUp : isUp
   return (
     <div className="bg-card border border-border rounded-lg p-4">
