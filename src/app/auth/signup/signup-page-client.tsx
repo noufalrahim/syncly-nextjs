@@ -61,14 +61,6 @@ export default function SignupPageClient() {
 
                 const data = await res.json()
                 if (res.ok) {
-                  localStorage.setItem(
-                    "syncly_user",
-                    JSON.stringify({
-                      id: data.userId,
-                      name,
-                      email,
-                    }),
-                  )
                   toast.success("Account created", {
                     description: "Your account has been created successfully.",
                   })

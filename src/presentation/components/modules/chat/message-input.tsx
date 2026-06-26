@@ -30,8 +30,11 @@ function renderHighlightedText(text: string, memberNames: string[]) {
   if (memberNames.length === 0) return displayText
 
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = memberNames.map((name) => escapeRegExp(name)).join('|')
-  const regex = new RegExp(`(@(?:${pattern}))`, 'g')
+  const pattern = memberNames.map((name) => {
+    const escaped = escapeRegExp(name)
+    return name.startsWith("@") ? escaped : `@${escaped}`
+  }).join('|')
+  const regex = new RegExp(`(${pattern})`, 'g')
 
   const parts: React.ReactNode[] = []
   let lastIndex = 0
@@ -60,7 +63,7 @@ function renderHighlightedText(text: string, memberNames: string[]) {
 }
 
 export function MessageInput() {
-  const { channels, activeChannelId, users, currentUserId } = useWorkspace()
+  const { channels, activeChannelId, users, currentUserId, activeWorkspaceId } = useWorkspace()
   const dispatch = useDispatch()
   const [value, setValue] = React.useState("")
   const [mentionState, setMentionState] = React.useState<{ query: string; index: number } | null>(null)
@@ -115,9 +118,37 @@ export function MessageInput() {
 
   const send = () => {
     if (!value.trim()) return
-    dispatch({ type: "SEND_MESSAGE", channelId: activeChannelId, body: value })
+    const currentVal = value
     setValue("")
-    setMentionState(null)
+    setMentionState(null);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: activeWorkspaceId,
+            channelId: activeChannelId,
+            authorId: currentUserId || "",
+            body: currentVal,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          dispatch({
+            type: "SEND_MESSAGE",
+            channelId: data.message.channelId,
+            body: data.message.body,
+            authorId: data.message.authorId,
+            id: data.message.id,
+            createdAt: data.message.createdAt,
+          });
+        }
+      } catch (error) {
+        console.error("Send message failed", error);
+      }
+    })();
   }
 
   const filteredUsers = React.useMemo(() => {
@@ -137,7 +168,7 @@ export function MessageInput() {
     if (!el) return
     const before = value.slice(0, mentionState.index)
     const after = value.slice(el.selectionStart)
-    const mentionText = `@${user.name} `
+    const mentionText = `${user.name.startsWith("@") ? "" : "@"}${user.name} `
     const newValue = before + mentionText + after
     setValue(newValue)
     setMentionState(null)

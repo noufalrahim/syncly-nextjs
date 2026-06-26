@@ -31,8 +31,11 @@ function renderHighlightedText(text: string, memberNames: string[]) {
   if (memberNames.length === 0) return displayText
 
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = memberNames.map((name) => escapeRegExp(name)).join('|')
-  const regex = new RegExp(`(@(?:${pattern}))`, 'g')
+  const pattern = memberNames.map((name) => {
+    const escaped = escapeRegExp(name)
+    return name.startsWith("@") ? escaped : `@${escaped}`
+  }).join('|')
+  const regex = new RegExp(`(${pattern})`, 'g')
 
   const parts: React.ReactNode[] = []
   let lastIndex = 0
@@ -67,7 +70,7 @@ export function ThreadSidebar({
   parentMessage: ChatMessage
   onClose: () => void
 }) {
-  const { messages, users, currentUserId, channels, activeTypingBotId } = useWorkspace()
+  const { messages, users, currentUserId, channels, activeTypingBotId, activeWorkspaceId } = useWorkspace()
   const dispatch = useDispatch()
   const channel = channels.find((c) => c.id === parentMessage.channelId)
   const [replyBody, setReplyBody] = React.useState("")
@@ -112,7 +115,8 @@ export function ThreadSidebar({
     const bot = users.find((u) => u.id === activeTypingBotId)
     if (!bot || !channel?.memberIds.includes(bot.id)) return null
     const lastMsg = replies.length > 0 ? replies[replies.length - 1] : parentMessage
-    if (lastMsg && lastMsg.body.includes(`@${bot.name}`)) {
+    const prefix = bot.name.startsWith("@") ? "" : "@"
+    if (lastMsg && lastMsg.body.includes(`${prefix}${bot.name}`)) {
       return bot
     }
     return null
@@ -132,14 +136,38 @@ export function ThreadSidebar({
   const handleSend = () => {
     const trimmed = replyBody.trim()
     if (!trimmed) return
-    dispatch({
-      type: "SEND_MESSAGE",
-      channelId: parentMessage.channelId,
-      body: trimmed,
-      parentId: parentMessage.id,
-    })
     setReplyBody("")
-    setMentionState(null)
+    setMentionState(null);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: activeWorkspaceId,
+            channelId: parentMessage.channelId,
+            authorId: currentUserId || "",
+            body: trimmed,
+            parentId: parentMessage.id,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          dispatch({
+            type: "SEND_MESSAGE",
+            channelId: data.message.channelId,
+            body: data.message.body,
+            parentId: data.message.parentId,
+            authorId: data.message.authorId,
+            id: data.message.id,
+            createdAt: data.message.createdAt,
+          });
+        }
+      } catch (error) {
+        console.error("Send reply failed", error);
+      }
+    })();
   }
 
   const filteredUsers = React.useMemo(() => {
@@ -159,7 +187,7 @@ export function ThreadSidebar({
     if (!el) return
     const before = replyBody.slice(0, mentionState.index)
     const after = replyBody.slice(el.selectionStart)
-    const mentionText = `@${user.name} `
+    const mentionText = `${user.name.startsWith("@") ? "" : "@"}${user.name} `
     const newValue = before + mentionText + after
     setReplyBody(newValue)
     setMentionState(null)

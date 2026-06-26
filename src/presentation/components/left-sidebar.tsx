@@ -56,7 +56,6 @@ export function LeftSidebar() {
   const meEmail = me?.email
 
   const handleLogout = () => {
-    localStorage.removeItem("syncly_user")
     signOut({ callbackUrl: "/auth/login" })
     router.push("/auth/login")
   }

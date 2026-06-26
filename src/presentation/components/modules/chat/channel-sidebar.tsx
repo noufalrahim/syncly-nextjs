@@ -180,7 +180,33 @@ export function ChannelSidebar() {
             onSubmit={(e) => {
               e.preventDefault()
               if (!chanName.trim()) return
-              dispatch({ type: "CREATE_CHANNEL", name: chanName.trim(), description: chanDesc.trim() })
+              (async () => {
+                try {
+                  const res = await fetch("/api/channels", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      workspaceId: activeWorkspaceId,
+                      type: "channel",
+                      name: chanName.trim(),
+                      description: chanDesc.trim(),
+                      memberIds: currentUserId ? [currentUserId] : [],
+                    }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    dispatch({
+                      type: "CREATE_CHANNEL",
+                      name: data.channel.name,
+                      description: data.channel.description,
+                      id: data.channel.id,
+                      memberIds: data.channel.memberIds,
+                    });
+                  }
+                } catch (error) {
+                  console.error("Create channel failed", error);
+                }
+              })();
               setChanName("")
               setChanDesc("")
               setCreateOpen(false)

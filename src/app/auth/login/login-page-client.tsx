@@ -79,7 +79,6 @@ export default function LoginPageClient() {
                 const meRes = await fetch("/api/me")
                 const meData = await meRes.json().catch(() => ({}))
                 if (meRes.ok && meData?.user) {
-                  localStorage.setItem("syncly_user", JSON.stringify(meData.user))
                   toast.success("Login successful", {
                     description: "You have been logged in.",
                   })

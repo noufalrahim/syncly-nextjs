@@ -38,6 +38,11 @@ export const authOptions: NextAuthOptions = {
         const user = await User.findOne({ email: String(email).toLowerCase() });
         if (!user) return null;
         if (!user.password || user.password !== password) return null;
+        if (!user.token) {
+          const crypto = require("crypto");
+          user.token = crypto.randomBytes(32).toString("hex");
+          await user.save();
+        }
         return {
           id: user._id.toString(),
           name: user.name,
@@ -53,6 +58,8 @@ export const authOptions: NextAuthOptions = {
       await connectToDatabase();
 
       const existing = await User.findOne({ email: user.email });
+      const crypto = require("crypto");
+      const generatedToken = crypto.randomBytes(32).toString("hex");
       if (!existing) {
         await User.create({
           name: user.name || user.email.split("@")[0],
@@ -60,19 +67,23 @@ export const authOptions: NextAuthOptions = {
           image: user.image,
           provider: account?.provider || "google",
           providerAccountId: account?.providerAccountId,
+          token: generatedToken,
+          theme: "dark",
         });
       } else {
+        const updateData: any = {
+          name: existing.name || user.name,
+          image: user.image,
+          provider: account?.provider || existing.provider,
+          providerAccountId:
+            account?.providerAccountId || existing.providerAccountId,
+        };
+        if (!existing.token) {
+          updateData.token = generatedToken;
+        }
         await User.updateOne(
           { _id: existing._id },
-          {
-            $set: {
-              name: existing.name || user.name,
-              image: user.image,
-              provider: account?.provider || existing.provider,
-              providerAccountId:
-                account?.providerAccountId || existing.providerAccountId,
-            },
-          }
+          { $set: updateData }
         );
       }
       return true;
@@ -81,11 +92,19 @@ export const authOptions: NextAuthOptions = {
       if (!token.email) return token;
       await connectToDatabase();
       const dbUser = await User.findOne({ email: token.email });
-      if (dbUser) token.id = dbUser._id.toString();
+      if (dbUser) {
+        token.id = dbUser._id.toString();
+        token.token = dbUser.token;
+        token.theme = dbUser.theme || "dark";
+      }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token?.id) (session.user as any).id = token.id as string;
+      if (session.user && token?.id) {
+        (session.user as any).id = token.id as string;
+        (session.user as any).token = token.token as string;
+        (session.user as any).theme = token.theme as string;
+      }
       return session;
     },
   },

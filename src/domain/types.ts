@@ -15,6 +15,8 @@ export type User = {
   color: string // tailwind bg class
   isBot?: boolean
   prompt?: string
+  theme?: string
+  token?: string
 }
 
 export type Tag = {

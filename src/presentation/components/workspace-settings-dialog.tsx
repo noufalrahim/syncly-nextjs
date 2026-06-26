@@ -145,17 +145,31 @@ export function WorkspaceSettingsDialog({
     const formattedName = `@${cleanedName}`;
 
     if (editingAgent) {
-      dispatch({
-        type: "UPDATE_AGENT",
-        agentId: editingAgent.id,
-        patch: {
-          name: formattedName,
-          email: agentDesc.trim() || undefined,
-          prompt: agentPrompt.trim(),
-          initials: cleanedName.slice(0, 2).toUpperCase(),
-        },
-      });
-      toast.success(`Agent ${formattedName} updated`);
+      (async () => {
+        try {
+          const res = await fetch(`/api/agents?agentId=${editingAgent.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: formattedName,
+              email: agentDesc.trim() || undefined,
+              prompt: agentPrompt.trim(),
+              initials: cleanedName.slice(0, 2).toUpperCase(),
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            dispatch({
+              type: "UPDATE_AGENT",
+              agentId: editingAgent.id,
+              patch: data.agent,
+            });
+            toast.success(`Agent ${formattedName} updated`);
+          }
+        } catch (error) {
+          console.error("Update agent failed", error);
+        }
+      })();
     } else {
       const colors = [
         "bg-purple-600",
@@ -165,24 +179,47 @@ export function WorkspaceSettingsDialog({
         "bg-violet-600",
       ];
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      const newAgent: User = {
-        id: `agent-${Date.now()}`,
-        name: formattedName,
-        email: agentDesc.trim() || undefined,
-        initials: cleanedName.slice(0, 2).toUpperCase(),
-        color: randomColor,
-        isBot: true,
-        prompt: agentPrompt.trim(),
-      };
-      dispatch({ type: "ADD_AGENT", agent: newAgent });
-      toast.success(`Agent ${formattedName} created`);
+      (async () => {
+        try {
+          const res = await fetch("/api/agents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workspaceId: activeWorkspace.id,
+              name: formattedName,
+              email: agentDesc.trim() || undefined,
+              initials: cleanedName.slice(0, 2).toUpperCase(),
+              color: randomColor,
+              prompt: agentPrompt.trim(),
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            dispatch({ type: "ADD_AGENT", agent: data.agent });
+            toast.success(`Agent ${formattedName} created`);
+          }
+        } catch (error) {
+          console.error("Create agent failed", error);
+        }
+      })();
     }
     setAgentFormOpen(false);
   };
 
   const handleDeleteAgent = (agentId: string) => {
-    dispatch({ type: "DELETE_AGENT", agentId });
-    toast.success("Agent removed from workspace");
+    (async () => {
+      try {
+        const res = await fetch(`/api/agents?agentId=${agentId}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          dispatch({ type: "DELETE_AGENT", agentId });
+          toast.success("Agent removed from workspace");
+        }
+      } catch (error) {
+        console.error("Delete agent failed", error);
+      }
+    })();
   };
 
   const workspaceBots = users.filter((u) => u.isBot);

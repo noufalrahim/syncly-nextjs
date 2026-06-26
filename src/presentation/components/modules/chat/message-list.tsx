@@ -30,7 +30,8 @@ export function MessageList({ onOpenThread }: { onOpenThread: (message: ChatMess
     const bot = users.find((u) => u.id === activeTypingBotId)
     if (!bot || !channel?.memberIds.includes(bot.id)) return null
     const lastMsg = channelMessages[channelMessages.length - 1]
-    if (lastMsg && !lastMsg.parentId && lastMsg.body.includes(`@${bot.name}`)) {
+    const prefix = bot.name.startsWith("@") ? "" : "@"
+    if (lastMsg && !lastMsg.parentId && lastMsg.body.includes(`${prefix}${bot.name}`)) {
       return bot
     }
     return null
@@ -77,11 +78,24 @@ export function MessageList({ onOpenThread }: { onOpenThread: (message: ChatMess
         key={g.messages[0].id}
         author={author}
         messages={g.messages}
-        currentUserId={currentUserId}
+        currentUserId={currentUserId || ""}
         userMap={userMap}
-        onReact={(messageId, emoji) =>
-          dispatch({ type: "TOGGLE_REACTION", messageId, emoji })
-        }
+        onReact={(messageId, emoji) => {
+          (async () => {
+            try {
+              const res = await fetch("/api/messages", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messageId, emoji }),
+              });
+              if (res.ok) {
+                dispatch({ type: "TOGGLE_REACTION", messageId, emoji });
+              }
+            } catch (e) {
+              console.error("Toggle reaction failed", e);
+            }
+          })();
+        }}
         allMessages={messages}
         onOpenThread={onOpenThread}
       />,
@@ -401,8 +415,11 @@ export function renderInline(text: string, users: User[] = []): React.ReactNode[
 
   let regex: RegExp
   if (sortedNames.length > 0) {
-    const namesPattern = sortedNames.map((name) => escapeRegExp(name)).join('|')
-    regex = new RegExp(`(\\*\\*[^*]+\\*\\*|https?:\\/\\/[^\\s]+|@(?:${namesPattern}))`, 'g')
+    const namesPattern = sortedNames.map((name) => {
+      const escaped = escapeRegExp(name)
+      return name.startsWith("@") ? escaped : `@${escaped}`
+    }).join('|')
+    regex = new RegExp(`(\\*\\*[^*]+\\*\\*|https?:\\/\\/[^\\s]+|${namesPattern})`, 'g')
   } else {
     regex = /(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g
   }

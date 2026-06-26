@@ -15,6 +15,7 @@ import type {
   HistoryEntry,
   Comment,
   Reference,
+  Workspace,
   Document as Doc
 } from "@/domain/types"
 
@@ -75,9 +76,9 @@ type Action =
   | { type: "UPDATE_NOTE"; noteId: string; patch: Partial<Note> }
   | { type: "SET_NOTES"; notes: Note[] }
   | { type: "SELECT_CHANNEL"; channelId: string }
-  | { type: "CREATE_CHANNEL"; name: string; description?: string }
+  | { type: "CREATE_CHANNEL"; name: string; description?: string; id?: string; memberIds?: string[] }
   | { type: "ADD_CHANNEL_MEMBER"; channelId: string; userId: string }
-  | { type: "SEND_MESSAGE"; channelId: string; body: string; parentId?: string; authorId?: string }
+  | { type: "SEND_MESSAGE"; channelId: string; body: string; parentId?: string; authorId?: string; id?: string; createdAt?: string }
   | { type: "ADD_AGENT"; agent: User }
   | { type: "UPDATE_AGENT"; agentId: string; patch: Partial<User> }
   | { type: "DELETE_AGENT"; agentId: string }
@@ -272,11 +273,11 @@ function reducer(state: State, action: Action): State {
     }
     case "CREATE_CHANNEL": {
       const newChan = {
-        id: `c-${Date.now()}`,
+        id: action.id || `c-${Date.now()}`,
         type: "channel" as const,
         name: action.name,
         description: action.description || "",
-        memberIds: state.currentUserId ? [state.currentUserId] : [],
+        memberIds: action.memberIds || (state.currentUserId ? [state.currentUserId] : []),
         unreadCount: 0,
       }
       return {
@@ -308,11 +309,11 @@ function reducer(state: State, action: Action): State {
       const trimmed = action.body.trim()
       if (!trimmed) return state
       const msg: ChatMessage = {
-        id: `m-${Date.now()}`,
+        id: action.id || `m-${Date.now()}`,
         channelId: action.channelId,
         authorId: action.authorId || state.currentUserId || "",
         body: trimmed,
-        createdAt: new Date().toISOString(),
+        createdAt: action.createdAt || new Date().toISOString(),
         reactions: [],
         parentId: action.parentId,
       }
@@ -347,43 +348,27 @@ function reducer(state: State, action: Action): State {
       }
     }
     case "ADD_AGENT": {
-      const nextUsers = [...state.users, action.agent]
-      if (typeof window !== "undefined" && state.activeWorkspaceId) {
-        const currentAgents = nextUsers.filter((u) => u.isBot)
-        localStorage.setItem(`syncly_agents_${state.activeWorkspaceId}`, JSON.stringify(currentAgents))
-      }
       return {
         ...state,
-        users: nextUsers,
+        users: [...state.users, action.agent],
       }
     }
     case "UPDATE_AGENT": {
-      const nextUsers = state.users.map((u) =>
-        u.id === action.agentId ? { ...u, ...action.patch } : u
-      )
-      if (typeof window !== "undefined" && state.activeWorkspaceId) {
-        const currentAgents = nextUsers.filter((u) => u.isBot)
-        localStorage.setItem(`syncly_agents_${state.activeWorkspaceId}`, JSON.stringify(currentAgents))
-      }
       return {
         ...state,
-        users: nextUsers,
+        users: state.users.map((u) =>
+          u.id === action.agentId ? { ...u, ...action.patch } : u
+        ),
       }
     }
     case "DELETE_AGENT": {
-      const nextUsers = state.users.filter((u) => u.id !== action.agentId)
-      if (typeof window !== "undefined" && state.activeWorkspaceId) {
-        const currentAgents = nextUsers.filter((u) => u.isBot)
-        localStorage.setItem(`syncly_agents_${state.activeWorkspaceId}`, JSON.stringify(currentAgents))
-      }
-      const nextChannels = state.channels.map((c) => ({
-        ...c,
-        memberIds: c.memberIds.filter((id) => id !== action.agentId),
-      }))
       return {
         ...state,
-        users: nextUsers,
-        channels: nextChannels,
+        users: state.users.filter((u) => u.id !== action.agentId),
+        channels: state.channels.map((c) => ({
+          ...c,
+          memberIds: c.memberIds.filter((id) => id !== action.agentId),
+        })),
       }
     }
     case "SET_TYPING_BOT": {
@@ -612,8 +597,6 @@ const DispatchCtx = React.createContext<React.Dispatch<Action> | null>(null)
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, initialState)
-  const [messagesLoadedFor, setMessagesLoadedFor] = React.useState<string | null>(null)
-  const [channelsLoadedFor, setChannelsLoadedFor] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const normalizeUser = (raw: any) => {
@@ -632,31 +615,53 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         email,
         initials: initials || "U",
         color: "bg-blue-500",
+        theme: raw.theme || "dark",
+        token: raw.token || "",
       };
     };
 
-    const saved = localStorage.getItem("syncly_user");
-    if (saved) {
-      try {
-        const user = normalizeUser(JSON.parse(saved));
-        dispatch({ type: "SET_CURRENT_USER", user });
-      } catch (e) {
-        console.error("Failed to parse saved user", e);
+    const cleanLocalStorage = () => {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("syncly_user");
+        localStorage.removeItem("theme");
+        localStorage.removeItem("token");
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("syncly_agents_") || key.startsWith("syncly_channels_") || key.startsWith("syncly_messages_"))) {
+            localStorage.removeItem(key);
+            i--;
+          }
+        }
       }
-      return;
-    }
+    };
+
+    const handleRedirect = () => {
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (!path.startsWith("/auth") && !path.startsWith("/invitations")) {
+          window.location.href = "/auth/login";
+        }
+      }
+    };
 
     (async () => {
       try {
+        cleanLocalStorage();
         const res = await fetch("/api/me");
-        if (!res.ok) return;
+        if (!res.ok) {
+          handleRedirect();
+          return;
+        }
         const data = await res.json();
-        if (!data?.user) return;
-        localStorage.setItem("syncly_user", JSON.stringify(data.user));
+        if (!data?.user || !data.user.token) {
+          handleRedirect();
+          return;
+        }
         const user = normalizeUser(data.user);
         dispatch({ type: "SET_CURRENT_USER", user });
       } catch (e) {
         console.error("Failed to fetch current user", e);
+        handleRedirect();
       }
     })();
   }, []);
@@ -721,33 +726,62 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [state.activeWorkspaceId]);
 
   React.useEffect(() => {
-    if (!state.activeWorkspaceId) return;
+    if (state.currentUserId) {
+      const user = state.users.find((u) => u.id === state.currentUserId);
+      if (user?.theme) {
+        if (user.theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
+      }
+    }
+  }, [state.currentUserId, state.users]);
+
+  React.useEffect(() => {
+    if (!state.activeWorkspaceId) {
+      dispatch({ type: "SET_USERS", users: [] });
+      return;
+    }
     (async () => {
       try {
-        const res = await fetch(`/api/workspaces/members?workspaceId=${state.activeWorkspaceId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const palette = ["bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-amber-500", "bg-rose-500"];
-        const users = (data.members || []).map((m: any, idx: number) => {
-          const name = String(m.name || m.email || "User");
-          const email = m.email ? String(m.email) : undefined;
-          const initials = name
-            .split(" ")
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((s: string) => s[0]?.toUpperCase())
-            .join("");
-          return {
-            id: m.userId,
-            name,
-            email,
-            initials: initials || "U",
-            color: palette[idx % palette.length],
-          };
-        });
-        dispatch({ type: "SET_USERS", users });
+        const [membersRes, agentsRes] = await Promise.all([
+          fetch(`/api/workspaces/members?workspaceId=${state.activeWorkspaceId}`),
+          fetch(`/api/agents?workspaceId=${state.activeWorkspaceId}`)
+        ]);
+
+        let humanUsers: any[] = [];
+        if (membersRes.ok) {
+          const data = await membersRes.json();
+          const palette = ["bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-amber-500", "bg-rose-500"];
+          humanUsers = (data.members || []).map((m: any, idx: number) => {
+            const name = String(m.name || m.email || "User");
+            const email = m.email ? String(m.email) : undefined;
+            const initials = name
+              .split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((s: string) => s[0]?.toUpperCase())
+              .join("");
+            return {
+              id: m.userId,
+              name,
+              email,
+              initials: initials || "U",
+              color: palette[idx % palette.length],
+            };
+          });
+        }
+
+        let agentUsers: any[] = [];
+        if (agentsRes.ok) {
+          const data = await agentsRes.json();
+          agentUsers = data.agents || [];
+        }
+
+        dispatch({ type: "SET_USERS", users: [...humanUsers, ...agentUsers] });
       } catch (e) {
-        console.error("Failed to fetch workspace members", e);
+        console.error("Failed to fetch workspace users", e);
       }
     })();
   }, [state.activeWorkspaceId]);
@@ -929,63 +963,38 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!state.activeWorkspaceId) {
       dispatch({ type: "SET_CUSTOM_CHANNELS", channels: [] })
-      setChannelsLoadedFor(null)
       return
     }
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`syncly_channels_${state.activeWorkspaceId}`)
-      if (saved) {
-        try {
-          const loaded = JSON.parse(saved)
-          dispatch({ type: "SET_CUSTOM_CHANNELS", channels: loaded })
-        } catch (e) {
-          console.error("Failed to parse saved channels", e)
+    (async () => {
+      try {
+        const res = await fetch(`/api/channels?workspaceId=${state.activeWorkspaceId}`)
+        if (res.ok) {
+          const data = await res.json()
+          dispatch({ type: "SET_CUSTOM_CHANNELS", channels: data.channels })
         }
-      } else {
-        dispatch({ type: "SET_CUSTOM_CHANNELS", channels: [] })
+      } catch (e) {
+        console.error("Failed to fetch channels", e)
       }
-      setChannelsLoadedFor(state.activeWorkspaceId)
-    }
+    })()
   }, [state.activeWorkspaceId])
-
-  React.useEffect(() => {
-    if (!state.activeWorkspaceId || channelsLoadedFor !== state.activeWorkspaceId) return
-    const customChannels = state.channels.filter(
-      (c) => c.type === "channel" && c.id !== "c-general" && c.id !== "c-random"
-    )
-    if (customChannels.length > 0) {
-      localStorage.setItem(`syncly_channels_${state.activeWorkspaceId}`, JSON.stringify(customChannels))
-    } else {
-      localStorage.removeItem(`syncly_channels_${state.activeWorkspaceId}`)
-    }
-  }, [state.channels, state.activeWorkspaceId, channelsLoadedFor])
 
   React.useEffect(() => {
     if (!state.activeWorkspaceId) {
       dispatch({ type: "SET_MESSAGES", messages: [] })
-      setMessagesLoadedFor(null)
       return
     }
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`syncly_messages_${state.activeWorkspaceId}`)
-      if (saved) {
-        try {
-          const loaded = JSON.parse(saved)
-          dispatch({ type: "SET_MESSAGES", messages: loaded })
-        } catch (e) {
-          console.error("Failed to parse saved messages", e)
+    (async () => {
+      try {
+        const res = await fetch(`/api/messages?workspaceId=${state.activeWorkspaceId}`)
+        if (res.ok) {
+          const data = await res.json()
+          dispatch({ type: "SET_MESSAGES", messages: data.messages })
         }
-      } else {
-        dispatch({ type: "SET_MESSAGES", messages: [] })
+      } catch (e) {
+        console.error("Failed to fetch messages", e)
       }
-      setMessagesLoadedFor(state.activeWorkspaceId)
-    }
+    })()
   }, [state.activeWorkspaceId])
-
-  React.useEffect(() => {
-    if (!state.activeWorkspaceId || messagesLoadedFor !== state.activeWorkspaceId) return
-    localStorage.setItem(`syncly_messages_${state.activeWorkspaceId}`, JSON.stringify(state.messages))
-  }, [state.messages, state.activeWorkspaceId, messagesLoadedFor])
 
   React.useEffect(() => {
     if (state.messages.length === 0) return
@@ -993,9 +1002,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const author = state.users.find((u) => u.id === lastMsg.authorId)
     if (author?.isBot) return
 
-    const mentionedBots = state.users.filter(
-      (u) => u.isBot && lastMsg.body.includes(`@${u.name}`)
-    )
+    const mentionedBots = state.users.filter((u) => {
+      if (!u.isBot) return false
+      const prefix = u.name.startsWith("@") ? "" : "@"
+      return lastMsg.body.includes(`${prefix}${u.name}`)
+    })
     if (mentionedBots.length === 0) return
 
     const channel = state.channels.find((c) => c.id === lastMsg.channelId)
@@ -1006,18 +1017,42 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     dispatch({ type: "SET_TYPING_BOT", botId: botToTrigger.id })
     const timeout = setTimeout(() => {
-      dispatch({
-        type: "SEND_MESSAGE",
-        channelId: lastMsg.channelId,
-        body: getBotResponse(botToTrigger.name, botToTrigger.prompt || "", lastMsg.body),
-        parentId: lastMsg.parentId,
-        authorId: botToTrigger.id,
-      })
-      dispatch({ type: "SET_TYPING_BOT", botId: null })
+      const responseBody = getBotResponse(botToTrigger.name, botToTrigger.prompt || "", lastMsg.body);
+      (async () => {
+        try {
+          const res = await fetch("/api/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workspaceId: state.activeWorkspaceId,
+              channelId: lastMsg.channelId,
+              authorId: botToTrigger.id,
+              body: responseBody,
+              parentId: lastMsg.parentId,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            dispatch({
+              type: "SEND_MESSAGE",
+              channelId: data.message.channelId,
+              body: data.message.body,
+              parentId: data.message.parentId,
+              authorId: data.message.authorId,
+              id: data.message.id,
+              createdAt: data.message.createdAt,
+            });
+          }
+        } catch (e) {
+          console.error("Bot response failed", e);
+        } finally {
+          dispatch({ type: "SET_TYPING_BOT", botId: null })
+        }
+      })();
     }, 1500)
 
     return () => clearTimeout(timeout)
-  }, [state.messages, state.users, state.channels])
+  }, [state.messages, state.users, state.channels, state.activeWorkspaceId])
 
   return (
     <StateCtx.Provider value={state}>

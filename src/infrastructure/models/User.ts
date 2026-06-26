@@ -27,6 +27,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    theme: {
+      type: String,
+      default: "dark",
+    },
+    token: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,
