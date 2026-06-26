@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, Edit2, Loader2, GripVertical } from "lucide-react"
+import { ArrowLeft, Settings, Columns, Tags, Users, AlertTriangle, Trash2, Plus, Edit2, Loader2, GripVertical, Link, Github, Check } from "lucide-react"
 import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace, useProjectColumns } from "@/presentation/state/workspace-store"
 import {
@@ -19,6 +19,7 @@ import EmojiPicker, { Theme } from "emoji-picker-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/presentation/components/ui/popover"
 import { useTheme } from "next-themes"
 import { getHexColor } from "@/domain/label-colors"
+import { toast } from "sonner"
 import {
   DndContext,
   closestCenter,
@@ -121,10 +122,15 @@ export function ProjectSettingsDialog({
   const dispatch = useDispatch()
   const project = projects.find(p => p.id === projectId)
 
-  const [activeTab, setActiveTab] = React.useState<"general" | "columns" | "tags" | "members" | "danger">("general")
+  const [activeTab, setActiveTab] = React.useState<"general" | "columns" | "tags" | "members" | "connections" | "danger">("general")
 
   const [projectName, setProjectName] = React.useState("")
   const [projectEmoji, setProjectEmoji] = React.useState("")
+  const [githubRepo, setGithubRepo] = React.useState("")
+  const [isConnecting, setIsConnecting] = React.useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false)
+  const [isConnected, setIsConnected] = React.useState(false)
+  const [selectedRepo, setSelectedRepo] = React.useState("")
   const [isPickerOpen, setIsPickerOpen] = React.useState(false)
   const [deleteConfirm, setDeleteConfirm] = React.useState("")
   const [localColumns, setLocalColumns] = React.useState<any[]>([])
@@ -160,6 +166,9 @@ export function ProjectSettingsDialog({
     if (project) {
       setProjectName(project.name)
       setProjectEmoji(project.emoji)
+      setGithubRepo(project.githubRepo || "")
+      setIsConnected(!!project.githubRepo)
+      setSelectedRepo(project.githubRepo || "")
       
       // Fetch columns for this project
       fetch(`/api/columns?projectId=${project.id}`)
@@ -221,6 +230,24 @@ export function ProjectSettingsDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: project.id, patch: { name: projectName.trim(), emoji: projectEmoji } })
       })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveConnections = async () => {
+    setIsSaving(true)
+    try {
+      dispatch({ type: "UPDATE_PROJECT", projectId: project.id, patch: { githubRepo: githubRepo.trim() } })
+      await fetch("/api/projects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, patch: { githubRepo: githubRepo.trim() } })
+      })
+      toast.success("Connections saved successfully")
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to save connections")
     } finally {
       setIsSaving(false)
     }
@@ -382,6 +409,7 @@ export function ProjectSettingsDialog({
     { id: "columns", label: "Columns", icon: Columns },
     { id: "tags", label: "Tags", icon: Tags },
     { id: "members", label: "Members", icon: Users },
+    { id: "connections", label: "Connections", icon: Link },
     { id: "danger", label: "Danger", icon: AlertTriangle },
   ] as const
 
@@ -693,6 +721,191 @@ export function ProjectSettingsDialog({
                         })
                       )}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "connections" && (
+                <div className="space-y-8">
+                  <div>
+                    <h2 className="text-xl font-semibold">Integrations & Connections</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Connect this project to external services like GitHub to enable rich features in chat.</p>
+                  </div>
+                  
+                  <div className="space-y-6 bg-card border border-border rounded-xl p-6">
+                    {!isConnected && !isConnecting && !isAuthModalOpen && (
+                      <div className="flex items-center justify-between p-4 bg-muted/20 border border-border rounded-xl">
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-lg bg-foreground/10 flex items-center justify-center">
+                            <Github className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold">GitHub Integration</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Link pull requests and issues to get automated reports in chat.
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsConnecting(true)
+                            setTimeout(() => {
+                              setIsConnecting(false)
+                              setIsAuthModalOpen(true)
+                            }, 1500)
+                          }}
+                        >
+                          Connect
+                        </Button>
+                      </div>
+                    )}
+
+                    {isConnecting && (
+                      <div className="flex flex-col items-center justify-center py-10 space-y-4 border border-border rounded-xl bg-muted/5">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground animate-pulse">
+                          Redirecting to GitHub for authorization...
+                        </p>
+                      </div>
+                    )}
+
+                    {isAuthModalOpen && (
+                      <div className="border border-border/80 rounded-xl overflow-hidden bg-background max-w-xl mx-auto shadow-xl">
+                        <div className="p-6 border-b border-border bg-muted/20 flex items-center gap-3">
+                          <Github className="h-6 w-6" />
+                          <h3 className="text-sm font-semibold">Authorize Syncly on GitHub</h3>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground p-3 bg-muted/30 border border-border rounded-lg">
+                            <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <span>Grants read access to public/private repositories metadata, issues, and pull requests.</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Syncly will be authorized to access repositories on behalf of your GitHub account <strong>noufalrahim</strong>.
+                          </p>
+                          <div className="flex items-center gap-3 pt-2">
+                            <Button 
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium animate-pulse-once"
+                              onClick={() => {
+                                setIsAuthModalOpen(false)
+                                setIsConnected(true)
+                                setSelectedRepo("noufalrahim/syncly-nextjs")
+                                toast.success("Successfully authenticated with GitHub")
+                              }}
+                            >
+                              Authorize noufalrahim
+                            </Button>
+                            <Button 
+                              variant="ghost"
+                              onClick={() => {
+                                setIsAuthModalOpen(false)
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {isConnected && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                              <Github className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-semibold flex items-center gap-2">
+                                GitHub <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/20 text-emerald-600 rounded-full">CONNECTED</span>
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Connected as <strong>noufalrahim</strong>
+                              </p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={async () => {
+                              setIsSaving(true)
+                              try {
+                                dispatch({ type: "UPDATE_PROJECT", projectId: project.id, patch: { githubRepo: "" } })
+                                await fetch("/api/projects", {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ projectId: project.id, patch: { githubRepo: "" } })
+                                })
+                                setIsConnected(false)
+                                setGithubRepo("")
+                                setSelectedRepo("")
+                                toast.success("Disconnected GitHub integration")
+                              } catch (e) {
+                                toast.error("Failed to disconnect GitHub")
+                              } finally {
+                                setIsSaving(false)
+                              }
+                            }}
+                          >
+                            Disconnect
+                          </Button>
+                        </div>
+
+                        <div className="space-y-3 bg-muted/10 p-6 rounded-xl border border-border">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Repository</Label>
+                            <select
+                              value={selectedRepo}
+                              onChange={(e) => setSelectedRepo(e.target.value)}
+                              className="w-full h-11 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring"
+                            >
+                              <option value="" disabled>-- Select repository --</option>
+                              <option value="noufalrahim/syncly-nextjs">noufalrahim/syncly-nextjs (Recommended)</option>
+                              <option value="google/antigravity">google/antigravity</option>
+                              <option value="vercel/next.js">vercel/next.js</option>
+                              <option value="facebook/react">facebook/react</option>
+                              <option value="tailwindlabs/tailwindcss">tailwindlabs/tailwindcss</option>
+                            </select>
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              Select a repository to allow users to fetch details and code review reports on `@PR-XXX` and `@Issue-XXX` mentions.
+                            </p>
+                          </div>
+
+                          <div className="pt-2">
+                            <Button 
+                              disabled={!selectedRepo || isSaving}
+                              onClick={async () => {
+                                setIsSaving(true)
+                                try {
+                                  dispatch({ type: "UPDATE_PROJECT", projectId: project.id, patch: { githubRepo: selectedRepo } })
+                                  await fetch("/api/projects", {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ projectId: project.id, patch: { githubRepo: selectedRepo } })
+                                  })
+                                  setGithubRepo(selectedRepo)
+                                  toast.success(`Repository connection saved: ${selectedRepo}`)
+                                } catch (e) {
+                                  toast.error("Failed to save repository selection")
+                                } finally {
+                                  setIsSaving(false)
+                                }
+                              }}
+                            >
+                              {isSaving ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                "Save Repository Connection"
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

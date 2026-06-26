@@ -6,6 +6,7 @@ const ProjectSchema = new mongoose.Schema(
     emoji: { type: String, required: true },
     color: { type: String, default: "blue" },
     workspaceId: { type: String, required: true },
+    githubRepo: { type: String },
   },
   { timestamps: true }
 );

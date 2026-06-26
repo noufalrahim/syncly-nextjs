@@ -7,6 +7,15 @@ import { cn } from "@/core/utils"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import type { User } from "@/domain/types"
 
+const MOCK_GITHUB_ITEMS = [
+  { id: "pr-134", name: "PR-134", description: "Implement Google Auth", type: "pr" },
+  { id: "pr-135", name: "PR-135", description: "Fix memory leak in chat", type: "pr" },
+  { id: "pr-136", name: "PR-136", description: "Upgrade Next.js to v15", type: "pr" },
+  { id: "issue-42", name: "Issue-42", description: "Sidebar collapse button buggy on mobile", type: "issue" },
+  { id: "issue-99", name: "Issue-99", description: "Billing modal doesn't open", type: "issue" },
+  { id: "issue-101", name: "Issue-101", description: "Notification emails are failing", type: "issue" },
+]
+
 function getMentionQuery(text: string, selectionStart: number) {
   const textBeforeCursor = text.slice(0, selectionStart)
   const lastAtIdx = textBeforeCursor.lastIndexOf("@")
@@ -24,17 +33,28 @@ function getMentionQuery(text: string, selectionStart: number) {
   }
 }
 
-function renderHighlightedText(text: string, memberNames: string[]) {
+function renderHighlightedText(text: string, memberNames: string[], isGithubConnected = false) {
   if (!text) return ""
   const displayText = text.endsWith("\n") ? text + " " : text
-  if (memberNames.length === 0) return displayText
 
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = memberNames.map((name) => {
-    const escaped = escapeRegExp(name)
-    return name.startsWith("@") ? escaped : `@${escaped}`
-  }).join('|')
-  const regex = new RegExp(`(${pattern})`, 'g')
+  const patterns: string[] = []
+
+  if (memberNames.length > 0) {
+    const namesPattern = memberNames.map((name) => {
+      const escaped = escapeRegExp(name)
+      return name.startsWith("@") ? escaped : `@${escaped}`
+    }).join('|')
+    patterns.push(namesPattern)
+  }
+
+  if (isGithubConnected) {
+    patterns.push("@(?:PR|Issue|pr|issue)-\\d+")
+  }
+
+  if (patterns.length === 0) return displayText
+
+  const regex = new RegExp(`(${patterns.join('|')})`, 'g')
 
   const parts: React.ReactNode[] = []
   let lastIndex = 0
@@ -46,14 +66,30 @@ function renderHighlightedText(text: string, memberNames: string[]) {
       parts.push(displayText.slice(lastIndex, match.index))
     }
     const token = match[0]
-    parts.push(
-      <span
-        key={key++}
-        className="bg-primary/25 rounded py-0.5"
-      >
-        {token}
-      </span>
-    )
+    const isPrOrIssue = isGithubConnected && /^@(PR|Issue|pr|issue)-\d+$/i.test(token)
+    if (isPrOrIssue) {
+      const isPr = /pr/i.test(token)
+      parts.push(
+        <span
+          key={key++}
+          className={isPr 
+            ? "bg-purple-500/25 rounded py-0.5 border border-purple-500/10 text-transparent" 
+            : "bg-emerald-500/25 rounded py-0.5 border border-emerald-500/10 text-transparent"
+          }
+        >
+          {token}
+        </span>
+      )
+    } else {
+      parts.push(
+        <span
+          key={key++}
+          className="bg-primary/25 rounded py-0.5 text-transparent"
+        >
+          {token}
+        </span>
+      )
+    }
     lastIndex = match.index + token.length
   }
   if (lastIndex < displayText.length) {
@@ -63,7 +99,9 @@ function renderHighlightedText(text: string, memberNames: string[]) {
 }
 
 export function MessageInput() {
-  const { channels, activeChannelId, users, currentUserId, activeWorkspaceId } = useWorkspace()
+  const { channels, activeChannelId, users, currentUserId, activeWorkspaceId, projects, activeProjectId } = useWorkspace()
+  const activeProject = projects.find((p) => p.id === activeProjectId)
+  const isGithubConnected = !!activeProject?.githubRepo
   const dispatch = useDispatch()
   const [value, setValue] = React.useState("")
   const [mentionState, setMentionState] = React.useState<{ query: string; index: number } | null>(null)
@@ -151,24 +189,35 @@ export function MessageInput() {
     })();
   }
 
-  const filteredUsers = React.useMemo(() => {
+  const filteredMentionItems = React.useMemo(() => {
     if (!mentionState) return []
     const q = mentionState.query.toLowerCase()
-    const members = channel.memberIds.map((id) => users.find((u) => u.id === id)).filter((u): u is User => Boolean(u))
-    return members.filter((u) => u.name.toLowerCase().includes(q))
-  }, [users, mentionState, channel.memberIds])
+    const members = channel.memberIds
+      .map((id) => users.find((u) => u.id === id))
+      .filter((u): u is User => Boolean(u))
+      .filter((u) => u.name.toLowerCase().includes(q))
+      .map((u) => ({ id: u.id, name: u.name, type: "user", avatar: u }))
+
+    const githubItems = isGithubConnected
+      ? MOCK_GITHUB_ITEMS
+          .filter((item) => item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q))
+          .map((item) => ({ id: item.id, name: item.name, type: item.type, description: item.description }))
+      : []
+
+    return [...members, ...githubItems]
+  }, [users, mentionState, channel.memberIds, isGithubConnected])
 
   React.useEffect(() => {
     setActiveIndex(0)
-  }, [filteredUsers.length])
+  }, [filteredMentionItems.length])
 
-  const insertMention = (user: User) => {
+  const insertMention = (item: any) => {
     if (!mentionState) return
     const el = textareaRef.current
     if (!el) return
     const before = value.slice(0, mentionState.index)
     const after = value.slice(el.selectionStart)
-    const mentionText = `${user.name.startsWith("@") ? "" : "@"}${user.name} `
+    const mentionText = `${item.name.startsWith("@") ? "" : "@"}${item.name} `
     const newValue = before + mentionText + after
     setValue(newValue)
     setMentionState(null)
@@ -187,20 +236,20 @@ export function MessageInput() {
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (mentionState && filteredUsers.length > 0) {
+    if (mentionState && filteredMentionItems.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault()
-        setActiveIndex((prev) => (prev + 1) % filteredUsers.length)
+        setActiveIndex((prev) => (prev + 1) % filteredMentionItems.length)
         return
       }
       if (e.key === "ArrowUp") {
         e.preventDefault()
-        setActiveIndex((prev) => (prev - 1 + filteredUsers.length) % filteredUsers.length)
+        setActiveIndex((prev) => (prev - 1 + filteredMentionItems.length) % filteredMentionItems.length)
         return
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault()
-        insertMention(filteredUsers[activeIndex])
+        insertMention(filteredMentionItems[activeIndex])
         return
       }
       if (e.key === "Escape") {
@@ -236,20 +285,41 @@ export function MessageInput() {
 
   return (
     <div className="px-4 pt-1 pb-4 bg-background relative">
-      {mentionState && filteredUsers.length > 0 && (
-        <div className="absolute bottom-full left-4 mb-2 w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-lg z-50 p-1 space-y-0.5">
-          {filteredUsers.map((u, i) => (
+      {mentionState && filteredMentionItems.length > 0 && (
+        <div className="absolute bottom-full left-4 mb-2 w-72 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-lg z-50 p-1 space-y-0.5">
+          {filteredMentionItems.map((item, i) => (
             <button
-              key={u.id}
+              key={item.id}
               type="button"
-              onClick={() => insertMention(u)}
+              onClick={() => insertMention(item)}
               className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors hover:bg-accent hover:text-foreground",
+                "w-full flex items-center justify-between px-2 py-1.5 rounded text-sm text-left transition-colors hover:bg-accent hover:text-foreground",
                 i === activeIndex ? "bg-accent text-foreground" : "text-foreground"
               )}
             >
-              <UserAvatar user={u} size="xs" />
-              <span className="truncate">{u.name}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                {item.type === "user" ? (
+                  <>
+                    <UserAvatar user={item.avatar} size="xs" />
+                    <span className="truncate">{item.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-semibold",
+                      item.type === "pr" ? "bg-purple-500/10 text-purple-400" : "bg-emerald-500/10 text-emerald-400"
+                    )}>
+                      {item.type === "pr" ? "PR" : "ISSUE"}
+                    </span>
+                    <span className="font-medium">{item.name}</span>
+                  </>
+                )}
+              </div>
+              {item.description && (
+                <span className="text-[11px] text-muted-foreground truncate max-w-[120px] ml-2">
+                  {item.description}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -260,7 +330,7 @@ export function MessageInput() {
           ref={overlayRef}
           className="absolute inset-0 pointer-events-none select-none text-transparent px-3 pt-3 pb-1 text-sm whitespace-pre-wrap break-words overflow-hidden z-0"
         >
-          {renderHighlightedText(value, sortedMemberNames)}
+          {renderHighlightedText(value, sortedMemberNames, isGithubConnected)}
         </div>
         <textarea
           ref={textareaRef}

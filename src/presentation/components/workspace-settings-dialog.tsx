@@ -227,7 +227,7 @@ export function WorkspaceSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] h-[540px] flex flex-col p-0 overflow-hidden bg-card border-border">
+      <DialogContent className="sm:max-w-[1400px] w-[95vw] h-[85vh] flex flex-col p-0 overflow-hidden bg-card border-border">
         <DialogHeader className="px-6 py-4 border-b border-border">
           <DialogTitle className="text-lg">Workspace Management</DialogTitle>
           <DialogDescription>
@@ -236,7 +236,7 @@ export function WorkspaceSettingsDialog({
         </DialogHeader>
 
         <div className="flex-1 flex min-h-0 divide-x divide-border">
-          <aside className="w-48 shrink-0 bg-sidebar/20 p-3 space-y-1">
+          <aside className="w-64 shrink-0 bg-sidebar/20 p-3 space-y-1">
             <button
               onClick={() => setActiveTab("general")}
               className={cn(

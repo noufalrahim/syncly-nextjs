@@ -83,6 +83,7 @@ export type Project = {
   color: string
   emoji: string
   workspaceId: string
+  githubRepo?: string
 }
 
 export type Note = {

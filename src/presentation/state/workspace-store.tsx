@@ -544,11 +544,37 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-function getBotResponse(botName: string, botPrompt: string, userMessage: string): string {
+function getBotResponse(botName: string, botPrompt: string, userMessage: string, isGithubConnected: boolean): string {
   const msg = userMessage.toLowerCase()
   const prompt = botPrompt.toLowerCase()
 
+  if (!isGithubConnected && (userMessage.includes("@PR-") || userMessage.includes("@Issue-") || msg.includes("@pr-") || msg.includes("@issue-"))) {
+    return `Hello! I detected that you mentioned a PR/Issue tag, but there is no GitHub repository connected to this project. To enable GitHub integrations, please go to **Project Settings > Connections** and connect a repository first.`
+  }
+
+  const prMatch = userMessage.match(/@(pr-\d+)/i)
+  const issueMatch = userMessage.match(/@(issue-\d+)/i)
+
   if (botName.includes("review") || prompt.includes("review") || prompt.includes("code")) {
+    if (prMatch) {
+      const prTag = prMatch[1].toUpperCase()
+      return `### Code Review Report for ${prTag} (by ${botName})
+I have analyzed the changes in **${prTag}** from the connected repository:
+- **Files Modified:** \`src/presentation/components/workspace-settings-dialog.tsx\`, \`src/presentation/components/project-settings-dialog.tsx\`
+- **Style & Consistency:** Clean, compliant with standard guidelines, and formatted correctly.
+- **Complexity:** Looks optimal; z-index helpers and flex layouts are utilized correctly.
+- **Potential Bugs:** No compilation issues or layout leaks detected.
+- **Recommendation:** LGTM! Ready to merge. Approve! ✅`
+    }
+    if (issueMatch) {
+      const issueTag = issueMatch[1].toUpperCase()
+      return `### Issue Analysis for ${issueTag} (by ${botName})
+I have checked the details for **${issueTag}** in the connected repository:
+- **State:** Open 🟢
+- **Title:** Modal alignment and connection integration
+- **Assigned to:** @noufalrahim
+- **Suggested Resolution:** Align Workspace settings dialog's DialogContent classes to match project settings, and introduce a githubRepo field in Project schema.`
+    }
     if (msg.includes("code") || msg.includes("function") || msg.includes("review") || msg.includes("merge")) {
       return `### Code Review Report (by ${botName})
 I have analyzed the submitted changes:
@@ -561,11 +587,25 @@ I have analyzed the submitted changes:
   }
 
   if (botName.includes("test") || prompt.includes("test") || prompt.includes("qa")) {
+    if (prMatch) {
+      const prTag = prMatch[1].toUpperCase()
+      return `### Automated Test Suite Run for ${prTag} (by ${botName})
+- **PR Target:** ${prTag}
+- **Unit Tests:** 24/24 passed (100% code coverage) 🟢
+- **Integration Tests:** 8/8 passed
+- **Status:** **PASSED** 🟢`
+    }
+    if (issueMatch) {
+      const issueTag = issueMatch[1].toUpperCase()
+      return `### QA Status for ${issueTag} (by ${botName})
+- **Linked Issue:** ${issueTag}
+- **Reproduction Steps:** Verified modal height and width matches on macOS Chrome and Safari.
+- **QA Verdict:** Fixed and verified. 🟢`
+    }
     if (msg.includes("run") || msg.includes("test") || msg.includes("deploy") || msg.includes("build")) {
       return `### Automated Test Suite Run (by ${botName})
 - **Unit Tests:** 24/24 passed (100% code coverage)
 - **Integration Tests:** 8/8 passed
-- **Performance:** Load testing completed in 1.4s (within SLAs)
 - **Status:** **PASSED** 🟢`
     }
     return `Hi! I am ${botName}, your testing assistant. I can run unit tests or integration simulations. Let me know when to start!`
@@ -573,6 +613,15 @@ I have analyzed the submitted changes:
 
   if (botName.includes("support") || prompt.includes("help") || prompt.includes("customer")) {
     return `Thank you for reaching out! As ${botName}, I've processed your query based on my prompt. Here is my support suggestion:\n- Please verify workspace permissions.\n- Let me know if you need escalation to a human engineer.`
+  }
+
+  if (prMatch) {
+    const prTag = prMatch[1].toUpperCase()
+    return `[Agent Response] Hello! I see you tagged **${prTag}**. Let me know if you want me to review it or run the test suite!`
+  }
+  if (issueMatch) {
+    const issueTag = issueMatch[1].toUpperCase()
+    return `[Agent Response] Hello! I see you tagged **${issueTag}**. Let me know if you want me to analyze the issue details!`
   }
 
   return `[Agent Response]
@@ -712,6 +761,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             emoji: p.emoji,
             color: p.color,
             workspaceId: p.workspaceId,
+            githubRepo: p.githubRepo,
           }));
           dispatch({ type: "SET_PROJECTS", projects: mapped });
         }
@@ -1017,7 +1067,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     dispatch({ type: "SET_TYPING_BOT", botId: botToTrigger.id })
     const timeout = setTimeout(() => {
-      const responseBody = getBotResponse(botToTrigger.name, botToTrigger.prompt || "", lastMsg.body);
+      const activeProject = state.projects.find((p) => p.id === state.activeProjectId)
+      const isGithubConnected = !!activeProject?.githubRepo
+      const responseBody = getBotResponse(botToTrigger.name, botToTrigger.prompt || "", lastMsg.body, isGithubConnected);
       (async () => {
         try {
           const res = await fetch("/api/messages", {

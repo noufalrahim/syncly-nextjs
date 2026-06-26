@@ -10,8 +10,10 @@ import type { ChatMessage, User } from "@/domain/types"
 const QUICK_REACTIONS = ["👍", "🎉", "🔥", "😂", "🙌", "👀"]
 
 export function MessageList({ onOpenThread }: { onOpenThread: (message: ChatMessage) => void }) {
-  const { messages, activeChannelId, users, channels, currentUserId, activeTypingBotId } = useWorkspace()
+  const { messages, activeChannelId, users, channels, currentUserId, activeTypingBotId, projects, activeProjectId } = useWorkspace()
   const dispatch = useDispatch()
+  const activeProject = projects.find((p) => p.id === activeProjectId)
+  const isGithubConnected = !!activeProject?.githubRepo
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
@@ -98,6 +100,7 @@ export function MessageList({ onOpenThread }: { onOpenThread: (message: ChatMess
         }}
         allMessages={messages}
         onOpenThread={onOpenThread}
+        isGithubConnected={isGithubConnected}
       />,
     )
   }
@@ -193,6 +196,7 @@ function MessageGroup({
   onReact,
   allMessages,
   onOpenThread,
+  isGithubConnected,
 }: {
   author: User | undefined
   messages: ChatMessage[]
@@ -201,6 +205,7 @@ function MessageGroup({
   onReact: (messageId: string, emoji: string) => void
   allMessages: ChatMessage[]
   onOpenThread: (message: ChatMessage) => void
+  isGithubConnected: boolean
 }) {
   const [first, ...rest] = messages
   return (
@@ -224,6 +229,7 @@ function MessageGroup({
               onReact={onReact}
               allMessages={allMessages}
               onOpenThread={onOpenThread}
+              isGithubConnected={isGithubConnected}
             />
           </div>
         </div>
@@ -237,6 +243,7 @@ function MessageGroup({
           onReact={onReact}
           allMessages={allMessages}
           onOpenThread={onOpenThread}
+          isGithubConnected={isGithubConnected}
         />
       ))}
     </div>
@@ -250,6 +257,7 @@ function ContinuationMessage({
   onReact,
   allMessages,
   onOpenThread,
+  isGithubConnected,
 }: {
   message: ChatMessage
   currentUserId: string
@@ -257,6 +265,7 @@ function ContinuationMessage({
   onReact: (messageId: string, emoji: string) => void
   allMessages: ChatMessage[]
   onOpenThread: (message: ChatMessage) => void
+  isGithubConnected: boolean
 }) {
   return (
     <div className="group/msg relative px-6 py-0.5 hover:bg-accent/30 transition-colors">
@@ -274,6 +283,7 @@ function ContinuationMessage({
             onReact={onReact}
             allMessages={allMessages}
             onOpenThread={onOpenThread}
+            isGithubConnected={isGithubConnected}
           />
         </div>
       </div>
@@ -288,6 +298,7 @@ function MessageBody({
   onReact,
   allMessages,
   onOpenThread,
+  isGithubConnected,
 }: {
   message: ChatMessage
   currentUserId: string
@@ -295,12 +306,13 @@ function MessageBody({
   onReact: (messageId: string, emoji: string) => void
   allMessages: ChatMessage[]
   onOpenThread: (message: ChatMessage) => void
+  isGithubConnected: boolean
 }) {
   const repliesCount = allMessages.filter((m) => m.parentId === message.id).length
   return (
     <div className="relative">
       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
-        {renderInline(message.body, Object.values(userMap))}
+        {renderInline(message.body, Object.values(userMap), isGithubConnected)}
         {message.edited && (
           <span className="ml-1 text-[10px] text-muted-foreground">(edited)</span>
         )}
@@ -400,7 +412,7 @@ function formatTime(iso: string, withDate = false) {
   return time
 }
 
-export function renderInline(text: string, users: User[] = []): React.ReactNode[] {
+export function renderInline(text: string, users: User[] = [], isGithubConnected = false): React.ReactNode[] {
   const parts: React.ReactNode[] = []
   if (!text) return parts
 
@@ -414,14 +426,19 @@ export function renderInline(text: string, users: User[] = []): React.ReactNode[
     .sort((a, b) => b.length - a.length)
 
   let regex: RegExp
+  const basePatterns = ["\\*\\*[^*]+\\*\\*", "https?:\\/\\/[^\\s]+"]
+  if (isGithubConnected) {
+    basePatterns.push("@(?:PR|Issue|pr|issue)-\\d+")
+  }
+
   if (sortedNames.length > 0) {
     const namesPattern = sortedNames.map((name) => {
       const escaped = escapeRegExp(name)
       return name.startsWith("@") ? escaped : `@${escaped}`
     }).join('|')
-    regex = new RegExp(`(\\*\\*[^*]+\\*\\*|https?:\\/\\/[^\\s]+|${namesPattern})`, 'g')
+    regex = new RegExp(`(${[namesPattern, ...basePatterns].join('|')})`, 'g')
   } else {
-    regex = /(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g
+    regex = new RegExp(`(${basePatterns.join('|')})`, 'g')
   }
 
   let lastIndex = 0
@@ -451,14 +468,33 @@ export function renderInline(text: string, users: User[] = []): React.ReactNode[
         </a>,
       )
     } else if (token.startsWith("@")) {
-      parts.push(
-        <span
-          key={`m-${key++}`}
-          className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium text-sm animate-pulse-once"
-        >
-          {token}
-        </span>,
-      )
+      const isPrOrIssue = isGithubConnected && /^@@?(?:PR|Issue|pr|issue)-\d+$/i.test(token)
+      if (isPrOrIssue) {
+        const isPr = /pr/i.test(token)
+        const number = token.split("-")[1]
+        parts.push(
+          <span
+            key={`git-${key++}`}
+            className={cn(
+              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold text-xs",
+              isPr
+                ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+            )}
+          >
+            {isPr ? "🐙 PR" : "🟢 Issue"} - {number}
+          </span>
+        )
+      } else {
+        parts.push(
+          <span
+            key={`m-${key++}`}
+            className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium text-sm animate-pulse-once"
+          >
+            {token}
+          </span>,
+        )
+      }
     }
     lastIndex = match.index + token.length
   }
