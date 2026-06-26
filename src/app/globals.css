@@ -55,6 +55,42 @@
   --radius: 0.625rem;
 }
 
+.light {
+  --background: oklch(0.98 0.002 240);
+  --foreground: oklch(0.12 0.005 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.12 0.005 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0.005 240);
+  --sidebar: oklch(0.99 0.002 240);
+  --sidebar-foreground: oklch(0.12 0.005 240);
+  --sidebar-primary: oklch(0.62 0.15 45);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0.005 240);
+  --sidebar-accent-foreground: oklch(0.12 0.005 240);
+  --sidebar-border: oklch(0.91 0.005 240);
+  --sidebar-ring: oklch(0.62 0.15 45);
+  --primary: oklch(0.62 0.15 45);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.005 240);
+  --secondary-foreground: oklch(0.12 0.005 240);
+  --muted: oklch(0.96 0.005 240);
+  --muted-foreground: oklch(0.55 0.005 240);
+  --accent: oklch(0.96 0.005 240);
+  --accent-foreground: oklch(0.12 0.005 240);
+  --destructive: oklch(0.55 0.18 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.91 0.005 240);
+  --input: oklch(0.91 0.005 240);
+  --ring: oklch(0.62 0.15 45);
+  --chart-1: oklch(0.62 0.15 45);
+  --chart-2: oklch(0.55 0.12 220);
+  --chart-3: oklch(0.60 0.14 140);
+  --chart-4: oklch(0.65 0.13 80);
+  --chart-5: oklch(0.40 0.005 240);
+}
+
+
 @theme inline {
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;

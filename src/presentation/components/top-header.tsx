@@ -15,12 +15,20 @@ export function TopHeader() {
     documents: "Documents",
     goals: "Goals",
     analytics: "Analytics",
+    home: "Home",
+    "my-tasks": "My Tasks",
+    inbox: "Inbox",
+    settings: "Settings",
   }
+
+  const isGlobalModule = ["home", "my-tasks", "inbox", "settings"].includes(module)
 
   return (
     <header className="h-14 shrink-0 border-b border-border bg-background flex items-center px-4 gap-3">
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        {project ? (
+        {isGlobalModule ? (
+          <span className="text-sm font-semibold truncate">{titleMap[module]}</span>
+        ) : project ? (
           <>
             <span className="text-base" aria-hidden>
               {project.emoji}

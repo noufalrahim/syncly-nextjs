@@ -40,7 +40,8 @@ export function LeftSidebar() {
     users, 
     workspaces, 
     activeWorkspaceId,
-    loading 
+    loading,
+    module
   } = useWorkspace()
   const projects = useFilteredProjects()
   const dispatch = useDispatch()
@@ -131,40 +132,36 @@ export function LeftSidebar() {
       </div>
 
       <nav className="px-2 space-y-0.5" aria-label="Primary">
-        <SidebarItem icon={<Home className="h-4 w-4" />} label="Home" active />
+        <SidebarItem
+          icon={<Home className="h-4 w-4" />}
+          label="Home"
+          active={module === "home"}
+          onClick={() => dispatch({ type: "SET_MODULE", module: "home" })}
+        />
         <SidebarItem
           icon={<CheckSquare className="h-4 w-4" />}
           label="My Tasks"
-          badge="0"
+          active={module === "my-tasks"}
+          onClick={() => dispatch({ type: "SET_MODULE", module: "my-tasks" })}
         />
         <SidebarItem
           icon={<Inbox className="h-4 w-4" />}
           label="Inbox"
-          badge="0"
+          active={module === "inbox"}
+          onClick={() => dispatch({ type: "SET_MODULE", module: "inbox" })}
         />
-        <SidebarItem icon={<Search className="h-4 w-4" />} label="Search" />
+        <SidebarItem
+          icon={<Search className="h-4 w-4" />}
+          label="Search"
+          onClick={() => window.dispatchEvent(new CustomEvent("toggle-spotlight-search"))}
+        />
         <SidebarItem
           icon={<Settings className="h-4 w-4" />}
           label="Settings"
-          onClick={() => setSettingsOpen((v) => !v)}
+          active={module === "settings"}
+          onClick={() => dispatch({ type: "SET_MODULE", module: "settings" })}
           disabled={!activeWorkspaceId}
         />
-        {settingsOpen && (
-          <div className="pl-6 pr-2 space-y-0.5">
-            <button
-              type="button"
-              disabled={!activeWorkspaceId}
-              className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                !activeWorkspaceId && "opacity-50 cursor-not-allowed",
-              )}
-              onClick={() => router.push("/settings/members")}
-            >
-              <Users className="h-4 w-4" />
-              <span className="flex-1 text-left truncate">Members</span>
-            </button>
-          </div>
-        )}
       </nav>
 
       <div className="mt-5 px-3 flex items-center justify-between">
@@ -210,7 +207,12 @@ export function LeftSidebar() {
           <>
             <button
               type="button"
-              onClick={() => dispatch({ type: "SELECT_PROJECT", projectId: null })}
+              onClick={() => {
+                dispatch({ type: "SELECT_PROJECT", projectId: null })
+                if (["home", "my-tasks", "inbox", "settings"].includes(module)) {
+                  dispatch({ type: "SET_MODULE", module: "tasks" })
+                }
+              }}
               className={cn(
                 "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
                 activeProjectId === null
@@ -232,7 +234,12 @@ export function LeftSidebar() {
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                   )}
-                  onClick={() => dispatch({ type: "SELECT_PROJECT", projectId: p.id })}
+                  onClick={() => {
+                    dispatch({ type: "SELECT_PROJECT", projectId: p.id })
+                    if (["home", "my-tasks", "inbox", "settings"].includes(module)) {
+                      dispatch({ type: "SET_MODULE", module: "tasks" })
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2 overflow-hidden flex-1">
                     <span className="text-base leading-none w-4 text-center shrink-0" aria-hidden>
@@ -289,7 +296,7 @@ export function LeftSidebar() {
           <DropdownMenuContent align="end" side="right" className="w-56 mb-2">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer">
+            <DropdownMenuItem className="cursor-pointer" onClick={() => dispatch({ type: "SET_MODULE", module: "settings" })}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Account Settings</span>
             </DropdownMenuItem>
@@ -367,15 +374,19 @@ function SidebarItem({
 }
 
 function SidebarSearch() {
+  const handleClick = () => {
+    window.dispatchEvent(new CustomEvent("toggle-spotlight-search"))
+  }
   return (
-    <div className="relative">
+    <div className="relative cursor-pointer" onClick={handleClick}>
       <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
       <input
         type="search"
         placeholder="Search…"
-        className="w-full bg-sidebar-accent/50 border border-transparent focus:border-ring focus:bg-sidebar-accent text-sm rounded-md pl-8 pr-2 py-1.5 outline-none placeholder:text-muted-foreground transition-colors"
+        readOnly
+        className="w-full bg-sidebar-accent/50 border border-transparent focus:border-ring focus:bg-sidebar-accent text-sm rounded-md pl-8 pr-2 py-1.5 outline-none placeholder:text-muted-foreground transition-colors cursor-pointer"
       />
-      <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-sidebar px-1 rounded border border-sidebar-border">
+      <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-sidebar px-1 rounded border border-sidebar-border pointer-events-none">
         ⌘K
       </kbd>
     </div>

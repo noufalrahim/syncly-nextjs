@@ -129,6 +129,10 @@ export type ModuleId =
   | "goals"
   | "analytics"
   | "chat"
+  | "home"
+  | "my-tasks"
+  | "inbox"
+  | "settings"
 
 export type PresenceStatus = "online" | "away" | "dnd" | "offline"
 
