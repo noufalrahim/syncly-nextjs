@@ -100,7 +100,7 @@ export default function LoginPageClient() {
           >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" defaultValue={defaultEmail} placeholder="noufalrahim6784@gmail.com" required className="h-11 bg-background/50 border-border/50 focus:border-primary/50 transition-colors" />
+              <Input id="email" name="email" type="email" defaultValue={defaultEmail} placeholder="Your Email" required className="h-11 bg-background/50 border-border/50 focus:border-primary/50 transition-colors" />
             </div>
 
             <div className="space-y-2">
