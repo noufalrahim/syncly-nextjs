@@ -29,6 +29,7 @@ const VIEWS: { id: TaskView; label: string; icon: React.ReactNode }[] = [
 ]
 
 import { AllProjectsView } from "./all-projects-view"
+import { UploadTasksDialog } from "./upload-tasks-dialog"
 
 export function TasksModule() {
   const { taskView, activeProjectId } = useWorkspace()
@@ -62,6 +63,9 @@ export function TasksModule() {
             </button>
           )
         })}
+        <div className="ml-auto flex items-center">
+          <UploadTasksDialog />
+        </div>
       </div>
 
       {taskView === "board" && <BoardView />}
