@@ -132,7 +132,7 @@ const initialState: State = {
   workspaces: [],
   activeWorkspaceId: null,
   loading: {
-    workspaces: false,
+    workspaces: true,
     projects: false,
     tasks: false,
     columns: false,
@@ -466,20 +466,39 @@ function reducer(state: State, action: Action): State {
         activeProjectId: nextActiveId,
       }
     }
-    case "ADD_WORKSPACE":
-      return { 
-        ...state, 
+    case "ADD_WORKSPACE": {
+      const nextActiveId = state.activeWorkspaceId || action.workspace.id
+      const activating = !state.activeWorkspaceId && Boolean(nextActiveId)
+      return {
+        ...state,
         workspaces: [...state.workspaces, action.workspace],
-        activeWorkspaceId: state.activeWorkspaceId || action.workspace.id 
+        activeWorkspaceId: nextActiveId,
+        ...(activating
+          ? { loading: { ...state.loading, projects: true, tasks: true } }
+          : {}),
       }
+    }
     case "SELECT_WORKSPACE":
-      return { ...state, activeWorkspaceId: action.workspaceId }
-    case "SET_WORKSPACES":
-      return { 
-        ...state, 
-        workspaces: action.workspaces,
-        activeWorkspaceId: state.activeWorkspaceId || action.workspaces[0]?.id || null
+      return {
+        ...state,
+        activeWorkspaceId: action.workspaceId,
+        ...(action.workspaceId
+          ? { loading: { ...state.loading, projects: true, tasks: true } }
+          : {}),
       }
+    case "SET_WORKSPACES": {
+      const nextActiveId =
+        state.activeWorkspaceId || action.workspaces[0]?.id || null
+      const activating = !state.activeWorkspaceId && Boolean(nextActiveId)
+      return {
+        ...state,
+        workspaces: action.workspaces,
+        activeWorkspaceId: nextActiveId,
+        ...(activating
+          ? { loading: { ...state.loading, projects: true, tasks: true } }
+          : {}),
+      }
+    }
     case "SET_PROJECTS":
       return { ...state, projects: action.projects }
     case "SET_TASKS":

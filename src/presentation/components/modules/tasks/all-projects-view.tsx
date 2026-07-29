@@ -13,7 +13,7 @@ export function AllProjectsView() {
   const { projects, tasks, users, loading } = useWorkspace()
   const dispatch = useDispatch()
 
-  const isLoading = loading.projects || loading.tasks
+  const isLoading = loading.workspaces || loading.projects || loading.tasks
 
   const projectStats = React.useMemo(() => {
     return projects.map((project) => {
@@ -85,12 +85,6 @@ export function AllProjectsView() {
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
                 >
-                  <div
-                    className="h-1 w-full shrink-0"
-                    style={{ backgroundColor: accent }}
-                    aria-hidden
-                  />
-
                   <div className="flex flex-1 flex-col gap-5 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
