@@ -26,6 +26,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-background" suppressHydrationWarning>
       <body className="font-sans antialiased text-foreground">
+        {/* Apply the saved accent color before first paint to avoid a flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var a=localStorage.getItem("syncly-accent");if(a&&a!=="orange")document.documentElement.setAttribute("data-accent",a)}catch(e){}`,
+          }}
+        />
         <Providers>{children}</Providers>
         <Toaster position={'top-right'}/>
         {process.env.NODE_ENV === "production" && <Analytics />}

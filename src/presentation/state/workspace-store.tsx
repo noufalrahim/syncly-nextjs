@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTheme } from "next-themes"
 import type {
   ChatChannel,
   ChatMessage,
@@ -794,18 +795,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     fetchProjects();
   }, [state.activeWorkspaceId]);
 
+  // Sync the theme saved on the user's profile once per session via
+  // next-themes, instead of mutating the class list directly (which
+  // fights next-themes' own class management).
+  const { setTheme } = useTheme();
+  const appliedUserTheme = React.useRef(false);
   React.useEffect(() => {
-    if (state.currentUserId) {
-      const user = state.users.find((u) => u.id === state.currentUserId);
-      if (user?.theme) {
-        if (user.theme === "dark") {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
-      }
+    if (appliedUserTheme.current || !state.currentUserId) return;
+    const user = state.users.find((u) => u.id === state.currentUserId);
+    if (user?.theme) {
+      appliedUserTheme.current = true;
+      setTheme(user.theme);
     }
-  }, [state.currentUserId, state.users]);
+  }, [state.currentUserId, state.users, setTheme]);
 
   React.useEffect(() => {
     if (!state.activeWorkspaceId) {

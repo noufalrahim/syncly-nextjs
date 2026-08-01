@@ -6,7 +6,16 @@ import { Button } from "@/presentation/components/ui/button"
 import { Input } from "@/presentation/components/ui/input"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
-import { Github, Laptop, Moon, Shield, Sun, User, WorkcaseIcon } from "lucide-react"
+import { Check, Github, Laptop, Moon, Shield, Sun, User } from "lucide-react"
+
+const ACCENTS = [
+  { id: "orange", label: "Orange", swatch: "oklch(0.72 0.17 50)" },
+  { id: "blue", label: "Blue", swatch: "oklch(0.68 0.16 245)" },
+  { id: "violet", label: "Violet", swatch: "oklch(0.68 0.18 295)" },
+  { id: "emerald", label: "Emerald", swatch: "oklch(0.72 0.15 160)" },
+  { id: "rose", label: "Rose", swatch: "oklch(0.7 0.18 15)" },
+  { id: "cyan", label: "Cyan", swatch: "oklch(0.75 0.12 210)" },
+] as const
 
 export function SettingsModule() {
   const { users, currentUserId, workspaces, activeWorkspaceId } = useWorkspace()
@@ -24,6 +33,26 @@ export function SettingsModule() {
 
   const [name, setName] = React.useState("")
   const [email, setEmail] = React.useState("")
+  const [accent, setAccent] = React.useState("orange")
+
+  React.useEffect(() => {
+    try {
+      setAccent(localStorage.getItem("syncly-accent") || "orange")
+    } catch {}
+  }, [])
+
+  const handleAccentChange = (newAccent: string) => {
+    setAccent(newAccent)
+    if (newAccent === "orange") {
+      document.documentElement.removeAttribute("data-accent")
+    } else {
+      document.documentElement.setAttribute("data-accent", newAccent)
+    }
+    try {
+      localStorage.setItem("syncly-accent", newAccent)
+    } catch {}
+    toast.success(`Accent color updated`)
+  }
 
   React.useEffect(() => {
     if (me) {
@@ -141,8 +170,8 @@ export function SettingsModule() {
 
               <div className="border-t border-border/80 pt-6 space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold">Theme Selection</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Customize the color mode of the application interface.</p>
+                  <h3 className="text-sm font-semibold">Appearance</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Customize the color mode and accent color of the application interface.</p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -175,6 +204,32 @@ export function SettingsModule() {
                     <Laptop className="h-5 w-5 text-zinc-400" />
                     <span className="text-xs font-semibold">System Default</span>
                   </button>
+                </div>
+
+                <div className="pt-2 space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Accent Color</label>
+                  <div className="flex flex-wrap gap-3">
+                    {ACCENTS.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => handleAccentChange(a.id)}
+                        className="flex flex-col items-center gap-1.5 cursor-pointer group"
+                        aria-label={`Use ${a.label} accent color`}
+                      >
+                        <span
+                          className={`h-9 w-9 rounded-full flex items-center justify-center transition-all ring-offset-2 ring-offset-background ${
+                            accent === a.id ? "ring-2 ring-foreground/60" : "group-hover:ring-2 group-hover:ring-foreground/25"
+                          }`}
+                          style={{ backgroundColor: a.swatch }}
+                        >
+                          {accent === a.id && <Check className="h-4 w-4 text-white drop-shadow" />}
+                        </span>
+                        <span className={`text-[10px] font-medium ${accent === a.id ? "text-foreground" : "text-muted-foreground"}`}>
+                          {a.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
