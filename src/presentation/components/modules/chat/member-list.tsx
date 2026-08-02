@@ -33,7 +33,8 @@ export function MemberList() {
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId)
   const isAdmin = activeWorkspace?.ownerId === currentUserId
-  const isCustomChannel = channel.type === "channel" && channel.id !== "c-general" && channel.id !== "c-random"
+  const isCustomChannel =
+    channel.type === "channel" && channel.name !== "general" && channel.name !== "random"
 
   const members = channel.memberIds
     .map((id) => users.find((u) => u.id === id))

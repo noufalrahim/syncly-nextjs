@@ -77,7 +77,7 @@ type Action =
   | { type: "UPDATE_NOTE"; noteId: string; patch: Partial<Note> }
   | { type: "SET_NOTES"; notes: Note[] }
   | { type: "SELECT_CHANNEL"; channelId: string }
-  | { type: "CREATE_CHANNEL"; name: string; description?: string; id?: string; memberIds?: string[] }
+  | { type: "CREATE_CHANNEL"; name: string; description?: string; id?: string; memberIds?: string[]; projectId?: string | null }
   | { type: "ADD_CHANNEL_MEMBER"; channelId: string; userId: string }
   | { type: "SEND_MESSAGE"; channelId: string; body: string; parentId?: string; authorId?: string; id?: string; createdAt?: string }
   | { type: "ADD_AGENT"; agent: User }
@@ -148,7 +148,13 @@ function reducer(state: State, action: Action): State {
     case "SET_TASK_VIEW":
       return { ...state, taskView: action.view }
     case "SELECT_PROJECT":
-      return { ...state, activeProjectId: action.projectId, selectedTaskId: null }
+      return {
+        ...state,
+        activeProjectId: action.projectId,
+        selectedTaskId: null,
+        // Reset chat selection so the new project's general channel can take over
+        activeChannelId: null,
+      }
     case "SELECT_TASK":
       return { ...state, selectedTaskId: action.taskId }
     case "MOVE_TASK": {
@@ -273,13 +279,14 @@ function reducer(state: State, action: Action): State {
       }
     }
     case "CREATE_CHANNEL": {
-      const newChan = {
+      const newChan: ChatChannel = {
         id: action.id || `c-${Date.now()}`,
         type: "channel" as const,
         name: action.name,
         description: action.description || "",
         memberIds: action.memberIds || (state.currentUserId ? [state.currentUserId] : []),
         unreadCount: 0,
+        projectId: action.projectId ?? state.activeProjectId,
       }
       return {
         ...state,
@@ -288,12 +295,21 @@ function reducer(state: State, action: Action): State {
       }
     }
     case "SET_CUSTOM_CHANNELS": {
-      const baseChannels = state.channels.filter(
-        (c) => c.id === "c-general" || c.id === "c-random" || c.id.startsWith("dm-")
-      )
+      // Keep client-synthesized DMs; replace project channels from the API.
+      const dms = state.channels.filter((c) => c.type === "dm")
+      const apiChannels = action.channels.filter((c) => c.type === "channel")
+      const apiDms = action.channels.filter((c) => c.type === "dm")
+      const dmIds = new Set(dms.map((c) => c.id))
+      const mergedDms = [...dms, ...apiDms.filter((c) => !dmIds.has(c.id))]
+      const nextChannels = [...apiChannels, ...mergedDms]
+      const stillValid =
+        state.activeChannelId && nextChannels.some((c) => c.id === state.activeChannelId)
+      const general =
+        apiChannels.find((c) => c.name === "general") ?? apiChannels[0] ?? mergedDms[0]
       return {
         ...state,
-        channels: [...baseChannels, ...action.channels]
+        channels: nextChannels,
+        activeChannelId: stillValid ? state.activeChannelId : general?.id ?? null,
       }
     }
     case "ADD_CHANNEL_MEMBER": {
@@ -396,28 +412,9 @@ function reducer(state: State, action: Action): State {
         }
       }
       const combinedUsers = [...action.users, ...workspaceAgents]
-      // Bots are helpers, not members — only humans belong on channel member lists.
-      const humanMemberIds = combinedUsers.filter((u) => !u.isBot).map((u) => u.id)
 
-      const defaultChannels = [
-        {
-          id: "c-general",
-          type: "channel" as const,
-          name: "general",
-          description: "Company-wide announcements and work-based matters",
-          memberIds: humanMemberIds,
-          unreadCount: 0,
-        },
-        {
-          id: "c-random",
-          type: "channel" as const,
-          name: "random",
-          description: "Non-work talk and banter",
-          memberIds: humanMemberIds,
-          unreadCount: 0,
-        },
-      ]
-
+      // DMs are workspace-wide; project channels come from the API per active project.
+      const existingProjectChannels = state.channels.filter((c) => c.type === "channel")
       const dmChannels = combinedUsers
         .filter((u) => u.id !== state.currentUserId && !u.isBot)
         .map((u) => ({
@@ -426,36 +423,13 @@ function reducer(state: State, action: Action): State {
           name: u.name,
           memberIds: [state.currentUserId || "", u.id],
           unreadCount: 0,
+          projectId: null,
         }))
-
-      let userCreatedChannels = state.channels.filter(
-        (c) => c.type === "channel" && c.id !== "c-general" && c.id !== "c-random"
-      )
-      if (userCreatedChannels.length === 0 && typeof window !== "undefined" && state.activeWorkspaceId) {
-        const saved = localStorage.getItem(`syncly_channels_${state.activeWorkspaceId}`)
-        if (saved) {
-          try {
-            userCreatedChannels = JSON.parse(saved)
-          } catch (e) {
-            console.error("Failed to parse saved channels", e)
-          }
-        }
-      }
-
-      // Strip any bot IDs that may have been saved as channel members previously.
-      const botIds = new Set(combinedUsers.filter((u) => u.isBot).map((u) => u.id))
-      userCreatedChannels = userCreatedChannels.map((c) => ({
-        ...c,
-        memberIds: c.memberIds.filter((id) => !botIds.has(id)),
-      }))
-
-      const allChannels = [...defaultChannels, ...userCreatedChannels, ...dmChannels]
 
       return {
         ...state,
         users: combinedUsers,
-        channels: allChannels,
-        activeChannelId: state.activeChannelId || "c-general",
+        channels: [...existingProjectChannels, ...dmChannels],
       }
     }
     case "SET_CURRENT_USER":
@@ -511,8 +485,17 @@ function reducer(state: State, action: Action): State {
           : {}),
       }
     }
-    case "SET_PROJECTS":
-      return { ...state, projects: action.projects }
+    case "SET_PROJECTS": {
+      const nextActiveId =
+        state.activeProjectId && action.projects.some((p) => p.id === state.activeProjectId)
+          ? state.activeProjectId
+          : action.projects[0]?.id || null
+      return {
+        ...state,
+        projects: action.projects,
+        activeProjectId: nextActiveId,
+      }
+    }
     case "SET_TASKS":
       return { ...state, tasks: action.tasks }
     case "SET_COLUMNS":
@@ -1045,13 +1028,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [state.activeWorkspaceId]);
 
   React.useEffect(() => {
-    if (!state.activeWorkspaceId) {
-      dispatch({ type: "SET_CUSTOM_CHANNELS", channels: [] })
+    if (!state.activeWorkspaceId || !state.activeProjectId) {
+      if (!state.activeProjectId) {
+        // Keep DMs; clear project channels until a project is selected.
+        dispatch({ type: "SET_CUSTOM_CHANNELS", channels: [] })
+      }
       return
     }
     (async () => {
       try {
-        const res = await fetch(`/api/channels?workspaceId=${state.activeWorkspaceId}`)
+        const res = await fetch(
+          `/api/channels?workspaceId=${state.activeWorkspaceId}&projectId=${state.activeProjectId}`
+        )
         if (res.ok) {
           const data = await res.json()
           dispatch({ type: "SET_CUSTOM_CHANNELS", channels: data.channels })
@@ -1060,7 +1048,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         console.error("Failed to fetch channels", e)
       }
     })()
-  }, [state.activeWorkspaceId])
+  }, [state.activeWorkspaceId, state.activeProjectId])
 
   React.useEffect(() => {
     if (!state.activeWorkspaceId) {
@@ -1204,4 +1192,14 @@ export function useProjectGoals() {
     if (!activeProjectId) return goals
     return goals.filter((g) => g.projectId === activeProjectId)
   }, [goals, activeProjectId])
+}
+
+/** Project channels for the active project + workspace DMs. */
+export function useProjectChannels() {
+  const { channels, activeProjectId } = useWorkspace()
+  return React.useMemo(() => {
+    return channels.filter(
+      (c) => c.type === "dm" || !activeProjectId || c.projectId === activeProjectId
+    )
+  }, [channels, activeProjectId])
 }

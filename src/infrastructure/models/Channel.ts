@@ -7,6 +7,11 @@ const ChannelSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    projectId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     type: {
       type: String,
       enum: ["channel", "dm"],
@@ -33,5 +38,9 @@ const ChannelSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+ChannelSchema.index({ workspaceId: 1, projectId: 1, type: 1 });
+
+delete mongoose.models.Channel;
 
 export default mongoose.models.Channel || mongoose.model("Channel", ChannelSchema);

@@ -10,7 +10,7 @@ import {
   Target,
 } from "lucide-react"
 import { cn } from "@/core/utils"
-import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
+import { useDispatch, useWorkspace, useProjectChannels } from "@/presentation/state/workspace-store"
 import type { ModuleId } from "@/domain/types"
 
 const MODULES: { id: ModuleId; label: string; icon: React.ReactNode }[] = [
@@ -24,7 +24,8 @@ const MODULES: { id: ModuleId; label: string; icon: React.ReactNode }[] = [
 ]
 
 export function ModuleNav() {
-  const { module, channels } = useWorkspace()
+  const { module } = useWorkspace()
+  const channels = useProjectChannels()
   const dispatch = useDispatch()
 
   const chatUnread = channels.reduce((sum, c) => sum + (c.unreadCount || 0), 0)

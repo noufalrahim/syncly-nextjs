@@ -150,6 +150,7 @@ export type ChatChannel = {
   description?: string
   memberIds: string[]
   unreadCount: number
+  projectId?: string | null
 }
 
 export type ChatReaction = {

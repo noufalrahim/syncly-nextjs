@@ -3,7 +3,7 @@
 import * as React from "react"
 import { ChevronDown, Hash, Plus, Search } from "lucide-react"
 import { cn } from "@/core/utils"
-import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
+import { useDispatch, useWorkspace, useProjectChannels } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { PresenceDot } from "./presence-dot"
 import {
@@ -20,7 +20,8 @@ import { Label } from "@/presentation/components/ui/label"
 import { Textarea } from "@/presentation/components/ui/textarea"
 
 export function ChannelSidebar() {
-  const { channels, activeChannelId, users, currentUserId, workspaces, activeWorkspaceId } = useWorkspace()
+  const { activeChannelId, users, currentUserId, workspaces, activeWorkspaceId, activeProjectId, projects } = useWorkspace()
+  const channels = useProjectChannels()
   const dispatch = useDispatch()
   const [query, setQuery] = React.useState("")
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -28,6 +29,7 @@ export function ChannelSidebar() {
   const [chanDesc, setChanDesc] = React.useState("")
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId)
+  const activeProject = projects.find((p) => p.id === activeProjectId)
   const isAdmin = activeWorkspace?.ownerId === currentUserId
 
   const channelList = channels.filter((c) => c.type === "channel")
@@ -44,10 +46,12 @@ export function ChannelSidebar() {
 
   return (
     <aside className="w-60 shrink-0 border-r border-border bg-sidebar/60 flex flex-col">
-      {/* Workspace header */}
+      {/* Project header */}
       <div className="h-14 px-4 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate">Atlas Workspace</span>
+          <span className="text-sm font-semibold truncate">
+            {activeProject ? `${activeProject.emoji} ${activeProject.name}` : activeWorkspace?.name || "Chat"}
+          </span>
         </div>
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </div>
@@ -182,11 +186,13 @@ export function ChannelSidebar() {
               if (!chanName.trim()) return
               (async () => {
                 try {
+                  if (!activeWorkspaceId || !activeProjectId) return
                   const res = await fetch("/api/channels", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       workspaceId: activeWorkspaceId,
+                      projectId: activeProjectId,
                       type: "channel",
                       name: chanName.trim(),
                       description: chanDesc.trim(),
@@ -201,6 +207,7 @@ export function ChannelSidebar() {
                       description: data.channel.description,
                       id: data.channel.id,
                       memberIds: data.channel.memberIds,
+                      projectId: data.channel.projectId,
                     });
                   }
                 } catch (error) {
