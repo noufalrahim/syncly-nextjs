@@ -24,24 +24,32 @@ export function ChatModule() {
     <div className="flex flex-1 min-h-0">
       <ChannelSidebar />
       <section className="flex-1 flex flex-col min-w-0 bg-background">
-        <ChatHeader
-          membersOpen={membersOpen && !isDM}
-          onToggleMembers={() => setMembersOpen((v) => !v)}
-        />
-        <div className="flex-1 flex min-h-0 divide-x divide-border">
-          <div className="flex-1 flex flex-col min-w-0 h-full">
-            <MessageList onOpenThread={setActiveThreadMessage} />
-            <MessageInput />
-          </div>
-          {activeThreadMessage && (
-            <ThreadSidebar
-              parentMessage={activeThreadMessage}
-              onClose={() => setActiveThreadMessage(null)}
+        {channel ? (
+          <>
+            <ChatHeader
+              membersOpen={membersOpen && !isDM}
+              onToggleMembers={() => setMembersOpen((v) => !v)}
             />
-          )}
-        </div>
+            <div className="flex-1 flex min-h-0 divide-x divide-border">
+              <div className="flex-1 flex flex-col min-w-0 h-full">
+                <MessageList onOpenThread={setActiveThreadMessage} />
+                <MessageInput />
+              </div>
+              {activeThreadMessage && (
+                <ThreadSidebar
+                  parentMessage={activeThreadMessage}
+                  onClose={() => setActiveThreadMessage(null)}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+            Loading channels…
+          </div>
+        )}
       </section>
-      {!isDM && membersOpen && <MemberList />}
+      {channel && !isDM && membersOpen && <MemberList />}
     </div>
   )
 }

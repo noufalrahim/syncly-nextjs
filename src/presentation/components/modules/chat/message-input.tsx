@@ -109,6 +109,8 @@ export function MessageInput() {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const overlayRef = React.useRef<HTMLDivElement>(null)
 
+  const channel = channels.find((c) => c.id === activeChannelId)
+
   React.useEffect(() => {
     setValue("")
     setMentionState(null)
@@ -131,10 +133,8 @@ export function MessageInput() {
     }
   }
 
-  const channel = channels.find((c) => c.id === activeChannelId)
-  if (!channel) return null
-
   const sortedMemberNames = React.useMemo(() => {
+    if (!channel) return []
     const memberNames = channel.memberIds
       .map((id) => users.find((u) => u.id === id))
       .filter((u): u is User => Boolean(u) && !u.isBot)
@@ -144,6 +144,35 @@ export function MessageInput() {
       .filter(Boolean)
       .sort((a, b) => b.length - a.length)
   }, [channel, users])
+
+  const filteredMentionItems = React.useMemo(() => {
+    if (!mentionState || !channel) return []
+    const q = mentionState.query.toLowerCase()
+    const members = channel.memberIds
+      .map((id) => users.find((u) => u.id === id))
+      .filter((u): u is User => Boolean(u) && !u.isBot)
+      .filter((u) => u.name.toLowerCase().includes(q))
+      .map((u) => ({ id: u.id, name: u.name, type: "user" as const, avatar: u }))
+
+    // Workspace bots are helpers — mentionable everywhere, not channel members.
+    const helpers = users
+      .filter((u) => u.isBot && u.name.toLowerCase().includes(q))
+      .map((u) => ({ id: u.id, name: u.name, type: "helper" as const, avatar: u }))
+
+    const githubItems = isGithubConnected
+      ? MOCK_GITHUB_ITEMS
+          .filter((item) => item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q))
+          .map((item) => ({ id: item.id, name: item.name, type: item.type, description: item.description }))
+      : []
+
+    return [...members, ...helpers, ...githubItems]
+  }, [users, mentionState, channel, isGithubConnected])
+
+  React.useEffect(() => {
+    setActiveIndex(0)
+  }, [filteredMentionItems.length])
+
+  if (!channel) return null
 
   const placeholder =
     channel.type === "channel"
@@ -190,33 +219,6 @@ export function MessageInput() {
       }
     })();
   }
-
-  const filteredMentionItems = React.useMemo(() => {
-    if (!mentionState) return []
-    const q = mentionState.query.toLowerCase()
-    const members = channel.memberIds
-      .map((id) => users.find((u) => u.id === id))
-      .filter((u): u is User => Boolean(u) && !u.isBot)
-      .filter((u) => u.name.toLowerCase().includes(q))
-      .map((u) => ({ id: u.id, name: u.name, type: "user", avatar: u }))
-
-    // Workspace bots are helpers — mentionable everywhere, not channel members.
-    const helpers = users
-      .filter((u) => u.isBot && u.name.toLowerCase().includes(q))
-      .map((u) => ({ id: u.id, name: u.name, type: "helper", avatar: u }))
-
-    const githubItems = isGithubConnected
-      ? MOCK_GITHUB_ITEMS
-          .filter((item) => item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q))
-          .map((item) => ({ id: item.id, name: item.name, type: item.type, description: item.description }))
-      : []
-
-    return [...members, ...helpers, ...githubItems]
-  }, [users, mentionState, channel.memberIds, isGithubConnected])
-
-  React.useEffect(() => {
-    setActiveIndex(0)
-  }, [filteredMentionItems.length])
 
   const insertMention = (item: any) => {
     if (!mentionState) return
@@ -305,9 +307,9 @@ export function MessageInput() {
               )}
             >
               <div className="flex items-center gap-2 min-w-0">
-                {item.type === "user" ? (
+                {item.type === "user" || item.type === "helper" ? (
                   <>
-                    <UserAvatar user={item.avatar} size="xs" />
+                    <UserAvatar user={(item as { avatar: User }).avatar} size="xs" />
                     <span className="truncate">{item.name}</span>
                   </>
                 ) : (
@@ -322,7 +324,7 @@ export function MessageInput() {
                   </>
                 )}
               </div>
-              {item.description && (
+              {"description" in item && item.description && (
                 <span className="text-[11px] text-muted-foreground truncate max-w-[120px] ml-2">
                   {item.description}
                 </span>
