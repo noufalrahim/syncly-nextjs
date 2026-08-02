@@ -209,6 +209,7 @@ export function ProjectSettingsDialog({
     () =>
       users.filter(
         (u) =>
+          !u.isBot &&
           u.id !== currentUserId &&
           u.id !== workspaceOwnerId &&
           !projectMemberIds.has(String(u.id))

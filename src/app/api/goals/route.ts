@@ -30,9 +30,9 @@ export async function POST(request: Request) {
     const me = await requireUser();
     if (!me.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { title, description, dueDate, workspaceId, ownerId } = await request.json();
+    const { title, description, dueDate, workspaceId, projectId, ownerId } = await request.json();
 
-    if (!title || !dueDate || !workspaceId || !ownerId) {
+    if (!title || !dueDate || !workspaceId || !projectId || !ownerId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       description: description || "",
       dueDate,
       workspaceId,
+      projectId,
       ownerId,
       progress: 0,
       status: "on-track",

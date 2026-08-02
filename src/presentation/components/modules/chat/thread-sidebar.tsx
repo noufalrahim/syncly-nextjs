@@ -120,10 +120,12 @@ export function ThreadSidebar({
 
   const sortedMemberNames = React.useMemo(() => {
     if (!channel) return []
-    return channel.memberIds
+    const memberNames = channel.memberIds
       .map((id) => users.find((u) => u.id === id))
-      .filter((u): u is User => Boolean(u))
+      .filter((u): u is User => Boolean(u) && !u.isBot)
       .map((u) => u.name)
+    const helperNames = users.filter((u) => u.isBot).map((u) => u.name)
+    return [...memberNames, ...helperNames]
       .filter(Boolean)
       .sort((a, b) => b.length - a.length)
   }, [channel, users])
@@ -151,7 +153,7 @@ export function ThreadSidebar({
   const typingBot = React.useMemo(() => {
     if (!activeTypingBotId) return null
     const bot = users.find((u) => u.id === activeTypingBotId)
-    if (!bot || !channel?.memberIds.includes(bot.id)) return null
+    if (!bot?.isBot) return null
     const lastMsg = replies.length > 0 ? replies[replies.length - 1] : parentMessage
     const prefix = bot.name.startsWith("@") ? "" : "@"
     if (lastMsg && lastMsg.body.includes(`${prefix}${bot.name}`)) {
@@ -213,9 +215,13 @@ export function ThreadSidebar({
     const q = mentionState.query.toLowerCase()
     const members = channel.memberIds
       .map((id) => users.find((u) => u.id === id))
-      .filter((u): u is User => Boolean(u))
+      .filter((u): u is User => Boolean(u) && !u.isBot)
       .filter((u) => u.name.toLowerCase().includes(q))
       .map((u) => ({ id: u.id, name: u.name, type: "user", avatar: u }))
+
+    const helpers = users
+      .filter((u) => u.isBot && u.name.toLowerCase().includes(q))
+      .map((u) => ({ id: u.id, name: u.name, type: "helper", avatar: u }))
 
     const githubItems = isGithubConnected
       ? MOCK_GITHUB_ITEMS
@@ -223,7 +229,7 @@ export function ThreadSidebar({
           .map((item) => ({ id: item.id, name: item.name, type: item.type, description: item.description }))
       : []
 
-    return [...members, ...githubItems]
+    return [...members, ...helpers, ...githubItems]
   }, [users, mentionState, channel, isGithubConnected])
 
   React.useEffect(() => {

@@ -136,7 +136,7 @@ export function UploadTasksDialog() {
         const assigneeNames = assigneesRaw.split(",").map(s => s.trim()).filter(Boolean)
         const assigneeIds: string[] = []
         for (const aname of assigneeNames) {
-          const u = users.find(u => u.name.toLowerCase() === aname.toLowerCase() || u.email?.toLowerCase() === aname.toLowerCase())
+          const u = users.find(u => !u.isBot && (u.name.toLowerCase() === aname.toLowerCase() || u.email?.toLowerCase() === aname.toLowerCase()))
           if (u) assigneeIds.push(u.id)
         }
 

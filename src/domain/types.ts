@@ -103,15 +103,20 @@ export type Goal = {
   status: "on-track" | "at-risk" | "off-track" | "completed"
   dueDate: string
   ownerId: string
+  workspaceId: string
+  projectId: string
 }
 
 export type Document = {
   id: string
   name: string
-  type: "pdf" | "doc" | "sheet" | "image" | "video" | "zip"
+  type: "pdf" | "doc" | "sheet" | "image" | "video" | "zip" | "folder"
   size: string
   updatedAt: string
   ownerId: string
+  workspaceId: string
+  projectId: string
+  parentId?: string | null
 }
 
 export type Workspace = {

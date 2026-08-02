@@ -37,7 +37,7 @@ export function MemberList() {
 
   const members = channel.memberIds
     .map((id) => users.find((u) => u.id === id))
-    .filter((u): u is User => Boolean(u))
+    .filter((u): u is User => Boolean(u) && !u.isBot)
 
   const online: User[] = []
   const offline = members
@@ -49,7 +49,7 @@ export function MemberList() {
     return t?.title
   }
 
-  const nonMembers = users.filter((u) => !channel.memberIds.includes(u.id))
+  const nonMembers = users.filter((u) => !u.isBot && !channel.memberIds.includes(u.id))
 
   return (
     <aside className="w-60 shrink-0 border-l border-border bg-sidebar/40 flex flex-col">

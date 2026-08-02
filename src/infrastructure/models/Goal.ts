@@ -13,6 +13,7 @@ const GoalSchema = new mongoose.Schema(
     dueDate: { type: String, required: true },
     ownerId: { type: String, required: true },
     workspaceId: { type: String, required: true },
+    projectId: { type: String, required: true, index: true },
   },
   { timestamps: true }
 );

@@ -30,7 +30,7 @@ export function MessageList({ onOpenThread }: { onOpenThread: (message: ChatMess
   const typingBot = React.useMemo(() => {
     if (!activeTypingBotId) return null
     const bot = users.find((u) => u.id === activeTypingBotId)
-    if (!bot || !channel?.memberIds.includes(bot.id)) return null
+    if (!bot?.isBot) return null
     const lastMsg = channelMessages[channelMessages.length - 1]
     const prefix = bot.name.startsWith("@") ? "" : "@"
     if (lastMsg && !lastMsg.parentId && lastMsg.body.includes(`${prefix}${bot.name}`)) {

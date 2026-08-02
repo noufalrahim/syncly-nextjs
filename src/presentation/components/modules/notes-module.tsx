@@ -100,14 +100,15 @@ export function NotesModule() {
     return result
   }, [notes, activeProjectId, searchQuery])
 
-  // Set default active note if none is selected
+  // Set default active note if none is selected or selection is outside this project
   React.useEffect(() => {
-    if (filteredNotes.length > 0 && (!activeId || !notes.find(n => n.id === activeId))) {
+    const stillValid = activeId && filteredNotes.some((n) => n.id === activeId)
+    if (filteredNotes.length > 0 && !stillValid) {
       setActiveId(filteredNotes[0].id)
     } else if (filteredNotes.length === 0) {
       setActiveId(null)
     }
-  }, [filteredNotes, activeId, notes])
+  }, [filteredNotes, activeId])
 
   const note = notes.find((n) => n.id === activeId)
 
@@ -231,7 +232,7 @@ export function NotesModule() {
                 {/* Associated Project Tag at bottom */}
                 <div className="mt-2.5 flex items-center justify-between">
                   <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/60 border border-border/40 text-[10px] text-muted-foreground font-medium max-w-[150px] truncate">
-                    <span className="text-xs shrink-0">{noteProject?.emoji || "📁"}</span>
+                    <span className="text-xs shrink-0">{noteProject?.emoji || "📝"}</span>
                     <span className="truncate">{noteProject?.name || "General"}</span>
                   </div>
                 </div>
@@ -553,7 +554,7 @@ function NoteEditor({ note, projects }: NoteEditorProps) {
                 type="button" 
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border/80 text-xs font-semibold text-foreground hover:bg-secondary transition-all cursor-pointer"
               >
-                <span>{currentProject?.emoji || "📁"}</span>
+                <span>{currentProject?.emoji || "📝"}</span>
                 <span>{currentProject?.name || "General Project"}</span>
                 <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
               </button>

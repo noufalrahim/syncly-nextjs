@@ -4,7 +4,7 @@ import * as React from "react"
 import { CheckCircle2, Plus, Trash2, Edit3, Loader2 } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { Goal } from "@/domain/types"
-import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
+import { useDispatch, useWorkspace, useProjectGoals } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import {
   Dialog,
@@ -59,7 +59,8 @@ function formatDate(iso: string) {
 }
 
 export function GoalsModule() {
-  const { goals, users, activeWorkspaceId, currentUserId } = useWorkspace()
+  const { users, activeWorkspaceId, activeProjectId, currentUserId } = useWorkspace()
+  const goals = useProjectGoals()
   const dispatch = useDispatch()
 
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -88,6 +89,13 @@ export function GoalsModule() {
     }
   }, [currentUserId, users])
 
+  // Clear edit selection when switching projects
+  React.useEffect(() => {
+    setSelectedGoal(null)
+    setEditOpen(false)
+    setDeleteOpen(false)
+  }, [activeProjectId])
+
   const completed = goals.filter((g) => g.status === "completed").length
   const onTrack = goals.filter((g) => g.status === "on-track").length
   const atRisk = goals.filter(
@@ -96,7 +104,7 @@ export function GoalsModule() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !dueDate || !ownerId || !activeWorkspaceId || isSubmitting) return
+    if (!title.trim() || !dueDate || !ownerId || !activeWorkspaceId || !activeProjectId || isSubmitting) return
 
     setIsSubmitting(true)
     try {
@@ -109,6 +117,7 @@ export function GoalsModule() {
           dueDate,
           ownerId,
           workspaceId: activeWorkspaceId,
+          projectId: activeProjectId,
         }),
       })
 
@@ -125,6 +134,7 @@ export function GoalsModule() {
             dueDate: data.goal.dueDate,
             ownerId: data.goal.ownerId,
             workspaceId: data.goal.workspaceId,
+            projectId: data.goal.projectId,
           },
         })
         setTitle("")
@@ -339,7 +349,7 @@ export function GoalsModule() {
                     required
                   >
                     <option value="">Select owner</option>
-                    {users.map((u) => (
+                    {users.filter((u) => !u.isBot).map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name}
                       </option>
@@ -415,7 +425,7 @@ export function GoalsModule() {
                     className="w-full h-10 px-3 border border-border rounded-lg bg-background text-sm outline-none"
                     required
                   >
-                    {users.map((u) => (
+                    {users.filter((u) => !u.isBot).map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name}
                       </option>

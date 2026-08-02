@@ -11,6 +11,7 @@ const DocumentSchema = new mongoose.Schema(
     size: { type: String, default: "" },
     parentId: { type: String, default: null },
     workspaceId: { type: String, required: true },
+    projectId: { type: String, required: true, index: true },
     ownerId: { type: String, required: true },
   },
   { timestamps: true }

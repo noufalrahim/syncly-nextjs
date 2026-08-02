@@ -336,7 +336,7 @@ function PanelBody({ task }: { task: Task }) {
               onChange={(v) => setLocalAssigneeId(v)}
               options={[
                 { value: "", label: "Unassigned" },
-                ...users.map((u) => ({
+                ...users.filter((u) => !u.isBot).map((u) => ({
                   value: u.id,
                   label: u.name,
                   user: u,

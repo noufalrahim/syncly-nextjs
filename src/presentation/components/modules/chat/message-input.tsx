@@ -135,10 +135,12 @@ export function MessageInput() {
   if (!channel) return null
 
   const sortedMemberNames = React.useMemo(() => {
-    return channel.memberIds
+    const memberNames = channel.memberIds
       .map((id) => users.find((u) => u.id === id))
-      .filter((u): u is User => Boolean(u))
+      .filter((u): u is User => Boolean(u) && !u.isBot)
       .map((u) => u.name)
+    const helperNames = users.filter((u) => u.isBot).map((u) => u.name)
+    return [...memberNames, ...helperNames]
       .filter(Boolean)
       .sort((a, b) => b.length - a.length)
   }, [channel, users])
@@ -194,9 +196,14 @@ export function MessageInput() {
     const q = mentionState.query.toLowerCase()
     const members = channel.memberIds
       .map((id) => users.find((u) => u.id === id))
-      .filter((u): u is User => Boolean(u))
+      .filter((u): u is User => Boolean(u) && !u.isBot)
       .filter((u) => u.name.toLowerCase().includes(q))
       .map((u) => ({ id: u.id, name: u.name, type: "user", avatar: u }))
+
+    // Workspace bots are helpers — mentionable everywhere, not channel members.
+    const helpers = users
+      .filter((u) => u.isBot && u.name.toLowerCase().includes(q))
+      .map((u) => ({ id: u.id, name: u.name, type: "helper", avatar: u }))
 
     const githubItems = isGithubConnected
       ? MOCK_GITHUB_ITEMS
@@ -204,7 +211,7 @@ export function MessageInput() {
           .map((item) => ({ id: item.id, name: item.name, type: item.type, description: item.description }))
       : []
 
-    return [...members, ...githubItems]
+    return [...members, ...helpers, ...githubItems]
   }, [users, mentionState, channel.memberIds, isGithubConnected])
 
   React.useEffect(() => {

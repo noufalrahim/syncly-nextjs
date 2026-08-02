@@ -111,12 +111,14 @@ export function AnalyticsModule() {
   }
 
   const productivityData = React.useMemo(() => {
-    return users.map((u) => ({
-      name: u.initials,
-      fullName: u.name,
-      tasks: tasks.filter((t) => t.assigneeId === u.id).length,
-      done: tasks.filter((t) => t.assigneeId === u.id && t.status === "done").length,
-    }))
+    return users
+      .filter((u) => !u.isBot)
+      .map((u) => ({
+        name: u.initials,
+        fullName: u.name,
+        tasks: tasks.filter((t) => t.assigneeId === u.id).length,
+        done: tasks.filter((t) => t.assigneeId === u.id && t.status === "done").length,
+      }))
   }, [users, tasks])
 
   return (

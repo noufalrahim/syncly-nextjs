@@ -148,7 +148,7 @@ function reducer(state: State, action: Action): State {
     case "SET_TASK_VIEW":
       return { ...state, taskView: action.view }
     case "SELECT_PROJECT":
-      return { ...state, activeProjectId: action.projectId }
+      return { ...state, activeProjectId: action.projectId, selectedTaskId: null }
     case "SELECT_TASK":
       return { ...state, selectedTaskId: action.taskId }
     case "MOVE_TASK": {
@@ -297,6 +297,8 @@ function reducer(state: State, action: Action): State {
       }
     }
     case "ADD_CHANNEL_MEMBER": {
+      const user = state.users.find((u) => u.id === action.userId)
+      if (user?.isBot) return state // Helpers are not channel members
       return {
         ...state,
         channels: state.channels.map((c) =>
@@ -394,6 +396,8 @@ function reducer(state: State, action: Action): State {
         }
       }
       const combinedUsers = [...action.users, ...workspaceAgents]
+      // Bots are helpers, not members — only humans belong on channel member lists.
+      const humanMemberIds = combinedUsers.filter((u) => !u.isBot).map((u) => u.id)
 
       const defaultChannels = [
         {
@@ -401,7 +405,7 @@ function reducer(state: State, action: Action): State {
           type: "channel" as const,
           name: "general",
           description: "Company-wide announcements and work-based matters",
-          memberIds: combinedUsers.map((u) => u.id),
+          memberIds: humanMemberIds,
           unreadCount: 0,
         },
         {
@@ -409,7 +413,7 @@ function reducer(state: State, action: Action): State {
           type: "channel" as const,
           name: "random",
           description: "Non-work talk and banter",
-          memberIds: combinedUsers.map((u) => u.id),
+          memberIds: humanMemberIds,
           unreadCount: 0,
         },
       ]
@@ -437,6 +441,13 @@ function reducer(state: State, action: Action): State {
           }
         }
       }
+
+      // Strip any bot IDs that may have been saved as channel members previously.
+      const botIds = new Set(combinedUsers.filter((u) => u.isBot).map((u) => u.id))
+      userCreatedChannels = userCreatedChannels.map((c) => ({
+        ...c,
+        memberIds: c.memberIds.filter((id) => !botIds.has(id)),
+      }))
 
       const allChannels = [...defaultChannels, ...userCreatedChannels, ...dmChannels]
 
@@ -987,6 +998,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             size: d.size,
             parentId: d.parentId,
             workspaceId: d.workspaceId,
+            projectId: d.projectId,
             ownerId: d.ownerId,
             updatedAt: d.updatedAt || d.createdAt || new Date().toISOString(),
           }));
@@ -1020,6 +1032,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             dueDate: g.dueDate,
             ownerId: g.ownerId,
             workspaceId: g.workspaceId,
+            projectId: g.projectId,
           }));
           dispatch({ type: "SET_GOALS", goals: mapped });
         }
@@ -1080,10 +1093,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     })
     if (mentionedBots.length === 0) return
 
-    const channel = state.channels.find((c) => c.id === lastMsg.channelId)
-    if (!channel) return
-
-    const botToTrigger = mentionedBots.find((bot) => channel.memberIds.includes(bot.id))
+    // Helpers are not channel members; any mentioned workspace bot can reply.
+    const botToTrigger = mentionedBots[0]
     if (!botToTrigger) return
 
     dispatch({ type: "SET_TYPING_BOT", botId: botToTrigger.id })
@@ -1177,4 +1188,20 @@ export function useProjectColumns() {
       .filter((c) => c.projectId === activeProjectId)
       .sort((a, b) => a.order - b.order)
   }, [columns, activeProjectId])
+}
+
+export function useProjectDocuments() {
+  const { documents, activeProjectId } = useWorkspace()
+  return React.useMemo(() => {
+    if (!activeProjectId) return documents
+    return documents.filter((d) => d.projectId === activeProjectId)
+  }, [documents, activeProjectId])
+}
+
+export function useProjectGoals() {
+  const { goals, activeProjectId } = useWorkspace()
+  return React.useMemo(() => {
+    if (!activeProjectId) return goals
+    return goals.filter((g) => g.projectId === activeProjectId)
+  }, [goals, activeProjectId])
 }

@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/core/utils"
 import type { Document } from "@/domain/types"
-import { useDispatch, useWorkspace } from "@/presentation/state/workspace-store"
+import { useDispatch, useWorkspace, useProjectDocuments } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import {
   Dialog,
@@ -58,7 +58,8 @@ function formatRelative(iso: string) {
 }
 
 export function DocumentsModule() {
-  const { documents, users, activeWorkspaceId } = useWorkspace()
+  const { users, activeWorkspaceId, activeProjectId } = useWorkspace()
+  const documents = useProjectDocuments()
   const dispatch = useDispatch()
 
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
@@ -74,6 +75,12 @@ export function DocumentsModule() {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+
+  // Reset folder navigation when switching projects
+  React.useEffect(() => {
+    setCurrentFolderId(null)
+    setPreviewFile(null)
+  }, [activeProjectId])
 
   const sortedItems = React.useMemo(() => {
     const items = documents.filter((d) => (d.parentId || null) === currentFolderId)
@@ -99,7 +106,7 @@ export function DocumentsModule() {
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newFolderName.trim() || !activeWorkspaceId || isSubmitting) return
+    if (!newFolderName.trim() || !activeWorkspaceId || !activeProjectId || isSubmitting) return
 
     setIsSubmitting(true)
     try {
@@ -111,6 +118,7 @@ export function DocumentsModule() {
           type: "folder",
           parentId: currentFolderId,
           workspaceId: activeWorkspaceId,
+          projectId: activeProjectId,
         }),
       })
 
@@ -125,6 +133,7 @@ export function DocumentsModule() {
             size: data.document.size,
             parentId: data.document.parentId,
             workspaceId: data.document.workspaceId,
+            projectId: data.document.projectId,
             ownerId: data.document.ownerId,
             updatedAt: data.document.updatedAt || data.document.createdAt,
           },
@@ -150,7 +159,7 @@ export function DocumentsModule() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !activeWorkspaceId || isSubmitting) return
+    if (!file || !activeWorkspaceId || !activeProjectId || isSubmitting) return
 
     setIsSubmitting(true)
     let sizeStr = "0 KB"
@@ -185,6 +194,7 @@ export function DocumentsModule() {
           type,
           parentId: currentFolderId,
           workspaceId: activeWorkspaceId,
+          projectId: activeProjectId,
           size: sizeStr,
         }),
       })
@@ -200,6 +210,7 @@ export function DocumentsModule() {
             size: data.document.size,
             parentId: data.document.parentId,
             workspaceId: data.document.workspaceId,
+            projectId: data.document.projectId,
             ownerId: data.document.ownerId,
             updatedAt: data.document.updatedAt || data.document.createdAt,
           },

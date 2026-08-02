@@ -133,7 +133,7 @@ export function QuickAddTask({ onSave, onCancel }: QuickAddTaskProps) {
               Unassigned
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {users.map(user => (
+            {users.filter((user) => !user.isBot).map(user => (
               <DropdownMenuItem key={user.id} onClick={() => setAssigneeId(user.id)}>
                 <UserAvatar user={user} size="xs" className="mr-2" />
                 {user.name}
