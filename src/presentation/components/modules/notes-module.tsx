@@ -24,7 +24,8 @@ import {
   Link as LinkIcon,
   ChevronsUpDown,
   Search,
-  FolderDot
+  FolderDot,
+  ArrowLeft,
 } from "lucide-react"
 import { cn } from "@/core/utils"
 import { useDispatch, useWorkspace, useFilteredProjects } from "@/presentation/state/workspace-store"
@@ -82,6 +83,7 @@ export function NotesModule() {
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isCreating, setIsCreating] = React.useState(false)
+  const [mobileShowEditor, setMobileShowEditor] = React.useState(false)
 
   // Filter notes based on active project and search query
   const filteredNotes = React.useMemo(() => {
@@ -151,6 +153,7 @@ export function NotesModule() {
         }
         dispatch({ type: "ADD_NOTE", note: createdNote })
         setActiveId(createdNote.id)
+        setMobileShowEditor(true)
       }
     } catch (e) {
       console.error("Failed to create note:", e)
@@ -162,7 +165,12 @@ export function NotesModule() {
   return (
     <div className="flex-1 flex overflow-hidden bg-background">
       {/* Sidebar List */}
-      <aside className="w-80 shrink-0 border-r border-border flex flex-col bg-card/10 backdrop-blur-sm">
+      <aside
+        className={cn(
+          "w-full md:w-80 shrink-0 border-r border-border flex-col bg-card/10 backdrop-blur-sm",
+          mobileShowEditor ? "hidden md:flex" : "flex",
+        )}
+      >
         <div className="p-4 border-b border-border flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/80">
@@ -172,7 +180,7 @@ export function NotesModule() {
               type="button"
               disabled={isCreating}
               onClick={handleAddNote}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground transition-all duration-200"
+              className="h-9 w-9 md:h-8 md:w-8 inline-flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground transition-all duration-200"
               aria-label="New note"
             >
               {isCreating ? (
@@ -191,7 +199,7 @@ export function NotesModule() {
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-4 bg-muted/40 border border-border/40 focus:border-primary/50 text-xs rounded-lg outline-none placeholder:text-muted-foreground/50 transition-colors"
+              className="w-full h-10 md:h-9 pl-9 pr-4 bg-muted/40 border border-border/40 focus:border-primary/50 text-sm md:text-xs rounded-lg outline-none placeholder:text-muted-foreground/50 transition-colors"
             />
           </div>
         </div>
@@ -205,9 +213,12 @@ export function NotesModule() {
               <button
                 type="button"
                 key={n.id}
-                onClick={() => setActiveId(n.id)}
+                onClick={() => {
+                  setActiveId(n.id)
+                  setMobileShowEditor(true)
+                }}
                 className={cn(
-                  "w-full text-left p-3 rounded-xl border border-transparent transition-all duration-200 group relative",
+                  "w-full text-left p-3 rounded-xl border border-transparent transition-all duration-200 group relative touch-manipulation",
                   isSelected
                     ? "bg-accent/60 border-border shadow-sm"
                     : "hover:bg-accent/30 text-muted-foreground hover:text-foreground"
@@ -250,9 +261,19 @@ export function NotesModule() {
       </aside>
 
       {/* Note Editor Area */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      <div
+        className={cn(
+          "flex-1 flex-col overflow-hidden bg-background",
+          mobileShowEditor ? "flex" : "hidden md:flex",
+        )}
+      >
         {note ? (
-          <NoteEditor key={note.id} note={note} projects={projects} />
+          <NoteEditor
+            key={note.id}
+            note={note}
+            projects={projects}
+            onBack={() => setMobileShowEditor(false)}
+          />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
             <Sparkles className="h-12 w-12 text-muted-foreground/20 stroke-[1.5] mb-3 animate-pulse" />
@@ -262,7 +283,7 @@ export function NotesModule() {
             </p>
             <button
               onClick={handleAddNote}
-              className="mt-4 px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 transition-all shadow-md shadow-primary/10 flex items-center gap-1.5"
+              className="mt-4 px-4 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 transition-all shadow-md shadow-primary/10 flex items-center gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
               Create your first note
@@ -427,9 +448,10 @@ function EditorToolbar({ editor }: { editor: any }) {
 interface NoteEditorProps {
   note: { id: string; title: string; body: string; updatedAt: string; projectId: string }
   projects: any[]
+  onBack?: () => void
 }
 
-function NoteEditor({ note, projects }: NoteEditorProps) {
+function NoteEditor({ note, projects, onBack }: NoteEditorProps) {
   const dispatch = useDispatch()
   const [title, setTitle] = React.useState(note.title)
   const [saveStatus, setSaveStatus] = React.useState<"saved" | "saving" | "idle">("idle")
@@ -545,18 +567,28 @@ function NoteEditor({ note, projects }: NoteEditorProps) {
   return (
     <>
       {/* Top note header controls */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border">
+      <div className="flex items-center justify-between px-3 md:px-6 py-3 border-b border-border gap-2">
         {/* Project Selector Badge */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="md:hidden h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground shrink-0"
+              aria-label="Back to notes"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button 
-                type="button" 
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border/80 text-xs font-semibold text-foreground hover:bg-secondary transition-all cursor-pointer"
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-lg bg-secondary/80 border border-border/80 text-xs font-semibold text-foreground hover:bg-secondary transition-all cursor-pointer max-w-[140px] sm:max-w-none"
               >
                 <span>{currentProject?.emoji || "📝"}</span>
-                <span>{currentProject?.name || "General Project"}</span>
-                <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate">{currentProject?.name || "General Project"}</span>
+                <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">

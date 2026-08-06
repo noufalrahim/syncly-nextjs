@@ -53,7 +53,7 @@ export function MemberList() {
   const nonMembers = users.filter((u) => !u.isBot && !channel.memberIds.includes(u.id))
 
   return (
-    <aside className="w-60 shrink-0 border-l border-border bg-sidebar/40 flex flex-col">
+    <aside className="w-full md:w-60 shrink-0 border-l border-border bg-sidebar/40 flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold">Members</h3>

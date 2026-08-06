@@ -3,7 +3,7 @@ import SignupPageClient from "./signup-page-client"
 
 function SignupPageFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="w-full max-w-[440px] space-y-8">
         <div className="rounded-2xl border border-border bg-card p-8">
           <div className="space-y-2 text-center mb-8">

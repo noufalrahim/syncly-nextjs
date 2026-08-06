@@ -6,11 +6,13 @@ import { cn } from "@/core/utils"
 import { STATUS_META, type Task } from "@/domain/types"
 import { useDispatch, useProjectTasks, useWorkspace } from "@/presentation/state/workspace-store"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
+import { useIsMobile } from "@/presentation/hooks/use-mobile"
 
 type CalendarViewMode = "month" | "week" | "day"
 
 const HOUR_HEIGHT = 56
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const DAY_LABELS_SHORT = ["S", "M", "T", "W", "T", "F", "S"]
 
 function startOfDay(d: Date) {
   const c = new Date(d)
@@ -72,6 +74,7 @@ export function TaskCalendarView() {
   const tasks = useProjectTasks()
   const { loading } = useWorkspace()
   const dispatch = useDispatch()
+  const isMobile = useIsMobile()
   const [view, setView] = React.useState<CalendarViewMode>("month")
   const [viewDate, setViewDate] = React.useState(() => startOfDay(new Date()))
   const [now, setNow] = React.useState(() => new Date())
@@ -84,7 +87,13 @@ export function TaskCalendarView() {
     return () => clearInterval(id)
   }, [])
 
-  // Scroll the time grid to the morning hours when opening week/day view.
+  // On narrow screens, prefer day over cramped week view.
+  React.useEffect(() => {
+    if (isMobile && view === "week") {
+      setView("day")
+    }
+  }, [isMobile, view])
+
   React.useEffect(() => {
     if (view !== "month" && scrollRef.current) {
       scrollRef.current.scrollTop = 7.5 * HOUR_HEIGHT
@@ -128,7 +137,11 @@ export function TaskCalendarView() {
 
   const title = React.useMemo(() => {
     if (view === "day") {
-      return viewDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      return viewDate.toLocaleDateString("en-US", {
+        month: isMobile ? "short" : "long",
+        day: "numeric",
+        year: "numeric",
+      })
     }
     if (view === "week") {
       const start = weekDays[0]
@@ -140,8 +153,11 @@ export function TaskCalendarView() {
       const endLabel = end.toLocaleDateString("en-US", { month: "short", year: "numeric" })
       return `${startLabel} – ${endLabel}`
     }
-    return viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })
-  }, [view, viewDate, weekDays])
+    return viewDate.toLocaleDateString("en-US", {
+      month: isMobile ? "short" : "long",
+      year: "numeric",
+    })
+  }, [view, viewDate, weekDays, isMobile])
 
   function TaskChip({ task, showTime }: { task: Task; showTime?: boolean }) {
     const meta = STATUS_META[task.status]
@@ -168,16 +184,17 @@ export function TaskCalendarView() {
   }
 
   const monthGrid = React.useMemo(() => buildMonthGrid(viewDate), [viewDate])
+  const viewModes = (isMobile ? (["month", "day"] as const) : (["month", "week", "day"] as const))
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-4 py-2.5 border-b border-border">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <button
             type="button"
             onClick={() => setViewDate(startOfDay(new Date()))}
-            className="h-8 px-3.5 text-sm font-medium border border-border rounded-full hover:bg-accent transition-colors cursor-pointer"
+            className="h-8 px-2.5 sm:px-3.5 text-xs sm:text-sm font-medium border border-border rounded-full hover:bg-accent transition-colors cursor-pointer shrink-0"
           >
             Today
           </button>
@@ -199,11 +216,11 @@ export function TaskCalendarView() {
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <h2 className="text-lg font-medium ml-1">{title}</h2>
+          <h2 className="text-sm sm:text-lg font-medium ml-0.5 truncate">{title}</h2>
         </div>
 
-        <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/30">
-          {(["month", "week", "day"] as const).map((v) => (
+        <div className="flex items-center self-end sm:self-auto rounded-lg border border-border p-0.5 bg-muted/30">
+          {viewModes.map((v) => (
             <button
               key={v}
               type="button"
@@ -223,29 +240,31 @@ export function TaskCalendarView() {
 
       {view === "month" ? (
         <>
-          {/* Month: weekday header */}
-          <div className="grid grid-cols-7 border-b border-border text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {DAY_LABELS.map((d) => (
-              <div key={d} className="px-2 py-1.5 text-center">
+          <div className="grid grid-cols-7 border-b border-border text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {(isMobile ? DAY_LABELS_SHORT : DAY_LABELS).map((d, i) => (
+              <div key={`${d}-${i}`} className="px-0.5 sm:px-2 py-1.5 text-center">
                 {d}
               </div>
             ))}
           </div>
 
-          {/* Month: grid */}
-          <div className="grid grid-cols-7 grid-rows-6 flex-1 overflow-hidden">
+          <div className="grid grid-cols-7 grid-rows-6 flex-1 overflow-hidden min-h-0">
             {monthGrid.map((d, i) => {
               const inMonth = d.getMonth() === viewDate.getMonth()
               const isToday = isSameDay(d, today)
               const dayTasks = tasksByDate.get(keyFor(d)) ?? []
-              const visible = dayTasks.slice(0, 3)
-              const overflow = dayTasks.length - visible.length
+              const visible = isMobile ? [] : dayTasks.slice(0, 3)
+              const overflow = isMobile
+                ? dayTasks.length
+                : dayTasks.length - visible.length
+              const dots = isMobile ? dayTasks.slice(0, 3) : []
+
               return (
                 <div
                   key={i}
                   onClick={() => openDay(d)}
                   className={cn(
-                    "border-r border-b border-border p-1 flex flex-col gap-0.5 overflow-hidden cursor-pointer hover:bg-accent/20 transition-colors",
+                    "border-r border-b border-border p-0.5 sm:p-1 flex flex-col gap-0.5 overflow-hidden cursor-pointer hover:bg-accent/20 transition-colors min-w-0",
                     !inMonth && "bg-muted/10",
                   )}
                 >
@@ -257,42 +276,66 @@ export function TaskCalendarView() {
                         openDay(d)
                       }}
                       className={cn(
-                        "inline-flex items-center justify-center text-xs font-medium h-6 min-w-6 px-1 rounded-full hover:bg-accent transition-colors cursor-pointer",
+                        "inline-flex items-center justify-center text-[11px] sm:text-xs font-medium h-6 min-w-6 px-1 rounded-full hover:bg-accent transition-colors cursor-pointer",
                         isToday && "bg-primary text-primary-foreground hover:bg-primary/90",
                         !inMonth && !isToday && "text-muted-foreground/60",
                       )}
                     >
-                      {d.getDate() === 1
+                      {!isMobile && d.getDate() === 1
                         ? `${d.toLocaleDateString("en-US", { month: "short" })} 1`
                         : d.getDate()}
                     </button>
                   </div>
-                  <div className="flex-1 space-y-0.5 overflow-hidden">
-                    {loading.tasks ? (
-                      <>
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-4/5" />
-                      </>
-                    ) : (
-                      <>
-                        {visible.map((t) => (
-                          <TaskChip key={t.id} task={t} showTime />
-                        ))}
-                        {overflow > 0 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openDay(d)
-                            }}
-                            className="w-full text-left text-[11px] font-medium text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
-                          >
-                            +{overflow} more
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
+
+                  {isMobile ? (
+                    <div className="flex flex-1 items-start justify-center gap-0.5 pt-0.5">
+                      {loading.tasks ? (
+                        <Skeleton className="h-1.5 w-1.5 rounded-full" />
+                      ) : (
+                        dots.map((t) => (
+                          <span
+                            key={t.id}
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full shrink-0",
+                              STATUS_META[t.status].dot ?? "bg-primary",
+                            )}
+                          />
+                        ))
+                      )}
+                      {overflow > 3 && (
+                        <span className="text-[9px] leading-none text-muted-foreground font-medium">
+                          +{overflow - 3}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex-1 space-y-0.5 overflow-hidden">
+                      {loading.tasks ? (
+                        <>
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-4/5" />
+                        </>
+                      ) : (
+                        <>
+                          {visible.map((t) => (
+                            <TaskChip key={t.id} task={t} showTime />
+                          ))}
+                          {overflow > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openDay(d)
+                              }}
+                              className="w-full text-left text-[11px] font-medium text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                            >
+                              +{overflow} more
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -300,26 +343,28 @@ export function TaskCalendarView() {
         </>
       ) : (
         <>
-          {/* Week/Day: day headers */}
           <div className="flex border-b border-border">
-            <div className="w-16 shrink-0" />
+            <div className="w-12 sm:w-16 shrink-0" />
             {weekDays.map((d) => {
               const isToday = isSameDay(d, today)
               return (
-                <div key={keyFor(d)} className="flex-1 flex flex-col items-center py-2 border-l border-border">
+                <div
+                  key={keyFor(d)}
+                  className="flex-1 flex flex-col items-center py-1.5 sm:py-2 border-l border-border min-w-0"
+                >
                   <span
                     className={cn(
-                      "text-[11px] font-medium uppercase tracking-wider",
+                      "text-[10px] sm:text-[11px] font-medium uppercase tracking-wider",
                       isToday ? "text-primary" : "text-muted-foreground",
                     )}
                   >
-                    {DAY_LABELS[d.getDay()]}
+                    {(isMobile ? DAY_LABELS_SHORT : DAY_LABELS)[d.getDay()]}
                   </span>
                   <button
                     type="button"
                     onClick={() => openDay(d)}
                     className={cn(
-                      "mt-0.5 h-9 w-9 inline-flex items-center justify-center rounded-full text-lg font-medium hover:bg-accent transition-colors cursor-pointer",
+                      "mt-0.5 h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-full text-base sm:text-lg font-medium hover:bg-accent transition-colors cursor-pointer",
                       isToday && "bg-primary text-primary-foreground hover:bg-primary/90",
                     )}
                   >
@@ -330,15 +375,17 @@ export function TaskCalendarView() {
             })}
           </div>
 
-          {/* Week/Day: all-day row */}
           <div className="flex border-b border-border bg-muted/10">
-            <div className="w-16 shrink-0 py-1 pr-2 text-right text-[10px] text-muted-foreground">
+            <div className="w-12 sm:w-16 shrink-0 py-1 pr-1 sm:pr-2 text-right text-[9px] sm:text-[10px] text-muted-foreground">
               all-day
             </div>
             {weekDays.map((d) => {
               const allDay = (tasksByDate.get(keyFor(d)) ?? []).filter(isAllDay)
               return (
-                <div key={keyFor(d)} className="flex-1 border-l border-border p-1 space-y-0.5 min-h-7">
+                <div
+                  key={keyFor(d)}
+                  className="flex-1 border-l border-border p-1 space-y-0.5 min-h-7 min-w-0 overflow-hidden"
+                >
                   {allDay.map((t) => (
                     <TaskChip key={t.id} task={t} />
                   ))}
@@ -347,15 +394,13 @@ export function TaskCalendarView() {
             })}
           </div>
 
-          {/* Week/Day: time grid */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
             <div className="flex relative" style={{ height: 24 * HOUR_HEIGHT }}>
-              {/* Hour gutter */}
-              <div className="w-16 shrink-0 relative">
+              <div className="w-12 sm:w-16 shrink-0 relative">
                 {Array.from({ length: 24 }, (_, h) => (
                   <span
                     key={h}
-                    className="absolute right-2 -translate-y-1/2 text-[10px] text-muted-foreground"
+                    className="absolute right-1 sm:right-2 -translate-y-1/2 text-[9px] sm:text-[10px] text-muted-foreground"
                     style={{ top: h * HOUR_HEIGHT }}
                   >
                     {hourLabel(h)}
@@ -365,7 +410,6 @@ export function TaskCalendarView() {
 
               {weekDays.map((d) => {
                 const timed = (tasksByDate.get(keyFor(d)) ?? []).filter((t) => !isAllDay(t))
-                // Tasks sharing the same start hour split the column width.
                 const byHour = new Map<number, Task[]>()
                 for (const t of timed) {
                   const h = taskTime(t).getHours()
@@ -376,8 +420,7 @@ export function TaskCalendarView() {
                 const isToday = isSameDay(d, today)
                 const nowOffset = (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT
                 return (
-                  <div key={keyFor(d)} className="flex-1 relative border-l border-border">
-                    {/* Hour lines */}
+                  <div key={keyFor(d)} className="flex-1 relative border-l border-border min-w-0">
                     {Array.from({ length: 24 }, (_, h) => (
                       <div
                         key={h}
@@ -386,7 +429,6 @@ export function TaskCalendarView() {
                       />
                     ))}
 
-                    {/* Events */}
                     {Array.from(byHour.entries()).flatMap(([hour, group]) =>
                       group.map((t, idx) => {
                         const time = taskTime(t)
@@ -420,7 +462,6 @@ export function TaskCalendarView() {
                       }),
                     )}
 
-                    {/* Current time indicator */}
                     {isToday && (
                       <div
                         className="absolute inset-x-0 z-20 pointer-events-none"

@@ -89,7 +89,7 @@ export function TaskDetailsPanel() {
     <Sheet open={open} onOpenChange={(val) => {
       if (!val) dispatch({ type: "SELECT_TASK", taskId: null })
     }}>
-      <SheetContent side="right" className="p-0 sm:max-w-[500px] border-l border-border">
+      <SheetContent side="right" className="p-0 w-full sm:max-w-[500px] border-l border-border">
         <SheetHeader className="sr-only">
           <SheetTitle>{task?.title || "Task Details"}</SheetTitle>
           <SheetDescription>View and edit task details, comments, and history.</SheetDescription>

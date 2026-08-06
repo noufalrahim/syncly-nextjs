@@ -17,7 +17,7 @@ export default function SignupPageClient() {
   const next = searchParams.get("next") || "/"
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="w-full max-w-[440px] space-y-8">
         <div className="flex justify-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">

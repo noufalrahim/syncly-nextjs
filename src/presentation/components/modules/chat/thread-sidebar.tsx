@@ -291,7 +291,7 @@ export function ThreadSidebar({
   }
 
   return (
-    <aside className="w-80 shrink-0 border-l border-border bg-sidebar/10 flex flex-col h-full">
+    <aside className="w-full md:w-80 shrink-0 border-l border-border bg-sidebar/10 flex flex-col h-full">
       <div className="h-14 px-4 flex items-center justify-between border-b border-border bg-card/30 backdrop-blur-md">
         <div className="flex flex-col">
           <span className="text-sm font-semibold">Thread</span>

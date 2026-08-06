@@ -32,7 +32,7 @@ export function ModuleNav() {
 
   return (
     <div
-      className="flex items-center gap-1 px-2 overflow-x-auto"
+      className="flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="tablist"
       aria-label="Modules"
     >
@@ -47,14 +47,15 @@ export function ModuleNav() {
             type="button"
             onClick={() => dispatch({ type: "SET_MODULE", module: m.id })}
             className={cn(
-              "relative flex items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap",
+              "relative flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 sm:py-3 text-sm font-medium transition-colors whitespace-nowrap shrink-0 touch-manipulation",
               active
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
             {m.icon}
-            {m.label}
+            <span className="hidden sm:inline">{m.label}</span>
+            <span className="sr-only sm:hidden">{m.label}</span>
             {showBadge && (
               <span
                 aria-label={`${chatUnread} unread messages`}

@@ -41,7 +41,7 @@ export function TasksModule() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+      <div className="flex items-center gap-1 px-2 md:px-3 py-2 border-b border-border overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {VIEWS.map((v) => {
           const active = v.id === taskView
           return (
@@ -52,18 +52,19 @@ export function TasksModule() {
                 dispatch({ type: "SET_TASK_VIEW", view: v.id })
               }
               className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
+                "inline-flex items-center gap-1.5 px-2.5 py-2 md:py-1.5 text-xs font-medium rounded-md transition-colors shrink-0 touch-manipulation",
                 active
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
               )}
             >
               {v.icon}
-              {v.label}
+              <span className="hidden sm:inline">{v.label}</span>
+              <span className="sr-only sm:hidden">{v.label}</span>
             </button>
           )
         })}
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center shrink-0">
           <UploadTasksDialog />
         </div>
       </div>

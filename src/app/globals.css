@@ -421,3 +421,55 @@
 .ProseMirror ul[data-type="taskList"] li > div {
   flex: 1;
 }
+
+/* ─── PWA / mobile polish ─────────────────────────────────────────── */
+@layer base {
+  /*
+   * iOS standalone chin-gap fix:
+   * Use 100vh (not height: 100%) so the body fills the real viewport.
+   * Never pair viewport-fit=cover with apple-mobile-web-app-status-bar-style
+   * black-translucent without 100vh — that combo shifts content and leaves a gap.
+   */
+  html {
+    height: 100vh;
+    height: 100dvh;
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    /* 100vh (not height: 100%) — required to avoid the iOS PWA chin gap */
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0;
+  }
+
+  /* Larger default touch targets on coarse pointers */
+  @media (pointer: coarse) {
+    button,
+    [role="button"],
+    a {
+      min-height: 2.25rem;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+

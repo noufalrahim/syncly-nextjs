@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Hash, Pin, Search, Users } from "lucide-react"
+import { ArrowLeft, Bell, Hash, Pin, Search, Users } from "lucide-react"
 import { useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { PresenceDot } from "./presence-dot"
@@ -8,9 +8,11 @@ import { PresenceDot } from "./presence-dot"
 export function ChatHeader({
   onToggleMembers,
   membersOpen,
+  onBack,
 }: {
   onToggleMembers: () => void
   membersOpen: boolean
+  onBack?: () => void
 }) {
   const { channels, activeChannelId, users, currentUserId } = useWorkspace()
   const channel = channels.find((c) => c.id === activeChannelId)
@@ -27,8 +29,18 @@ export function ChatHeader({
   const presenceStatus = "offline"
 
   return (
-    <header className="h-14 shrink-0 flex items-center justify-between gap-3 px-4 border-b border-border bg-background">
-      <div className="flex items-center gap-2 min-w-0">
+    <header className="h-12 md:h-14 shrink-0 flex items-center justify-between gap-2 md:gap-3 px-2 md:px-4 border-b border-border bg-background">
+      <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="md:hidden h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground shrink-0"
+            aria-label="Back to conversations"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
         {isDM && otherUser ? (
           <div className="flex items-center gap-2 min-w-0">
             <span className="relative shrink-0">
@@ -52,8 +64,8 @@ export function ChatHeader({
             <h2 className="text-sm font-semibold truncate">{channel.name}</h2>
             {channel.description && (
               <>
-                <span className="h-4 w-px bg-border mx-1" aria-hidden />
-                <p className="text-xs text-muted-foreground truncate">
+                <span className="hidden sm:block h-4 w-px bg-border mx-1" aria-hidden />
+                <p className="hidden sm:block text-xs text-muted-foreground truncate">
                   {channel.description}
                 </p>
               </>
@@ -62,14 +74,14 @@ export function ChatHeader({
         )}
       </div>
 
-      <div className="flex items-center gap-1">
-        <IconBtn label="Pinned messages">
+      <div className="flex items-center gap-0.5 md:gap-1">
+        <IconBtn label="Pinned messages" className="hidden sm:inline-flex">
           <Pin className="h-4 w-4" />
         </IconBtn>
-        <IconBtn label="Notifications">
+        <IconBtn label="Notifications" className="hidden sm:inline-flex">
           <Bell className="h-4 w-4" />
         </IconBtn>
-        <IconBtn label="Search in channel">
+        <IconBtn label="Search in channel" className="hidden sm:inline-flex">
           <Search className="h-4 w-4" />
         </IconBtn>
         {!isDM && (
@@ -91,11 +103,13 @@ function IconBtn({
   label,
   onClick,
   active,
+  className = "",
 }: {
   children: React.ReactNode
   label: string
   onClick?: () => void
   active?: boolean
+  className?: string
 }) {
   return (
     <button
@@ -103,11 +117,11 @@ function IconBtn({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`h-8 w-8 inline-flex items-center justify-center rounded-md transition-colors ${
+      className={`h-9 w-9 md:h-8 md:w-8 inline-flex items-center justify-center rounded-md transition-colors ${
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      }`}
+      } ${className}`}
     >
       {children}
     </button>

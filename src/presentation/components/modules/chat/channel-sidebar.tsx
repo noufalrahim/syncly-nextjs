@@ -45,7 +45,7 @@ export function ChannelSidebar() {
   const myStatus = "online"
 
   return (
-    <aside className="w-60 shrink-0 border-r border-border bg-sidebar/60 flex flex-col">
+    <aside className="w-full md:w-60 shrink-0 border-r border-border bg-sidebar/60 flex flex-col h-full">
       {/* Project header */}
       <div className="h-14 px-4 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
