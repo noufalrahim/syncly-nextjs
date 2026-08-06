@@ -17,4 +17,5 @@ public/sw.js.map
 # Common ignores
 node_modules
 .next/
-.DS_Store.pnpm-store/
+.DS_Store
+.pnpm-store/
