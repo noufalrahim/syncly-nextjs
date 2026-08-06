@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
+import { SynclyLogo } from "@/presentation/components/syncly-logo"
 
 export default function SignupPageClient() {
   const [isLoading, setIsLoading] = React.useState(false)
@@ -20,9 +21,7 @@ export default function SignupPageClient() {
     <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="w-full max-w-[440px] space-y-8">
         <div className="flex justify-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
-            S
-          </div>
+          <SynclyLogo size={44} />
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-8">

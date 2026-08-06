@@ -1,14 +1,7 @@
-<svg width="180" height="180" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    @media (prefers-color-scheme: light) {
-      .outer { fill: #1A1816; }
-    }
-    @media (prefers-color-scheme: dark) {
-      .outer { fill: #F5F2EE; }
-    }
-  </style>
-  <rect class="outer" width="512" height="512" rx="112"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#1A1816"/>
   <rect x="48" y="48" width="416" height="416" rx="92" fill="#E8913A"/>
+  <!-- Bold sync arrows -->
   <path
     fill="#1A1816"
     d="M168 214c0-48 39-86 88-86s88 38 88 86v18l36-40-36-40v16c0-58-47-104-104-104s-104 46-104 104h32z"

@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import * as React from "react"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
+import { SynclyLogo } from "@/presentation/components/syncly-logo"
 
 export default function LoginPageClient() {
   const [isLoading, setIsLoading] = React.useState(false)
@@ -20,6 +21,9 @@ export default function LoginPageClient() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="w-full max-w-[440px] space-y-8">
+        <div className="flex justify-center">
+          <SynclyLogo size={44} />
+        </div>
         <div className="rounded-2xl border border-border bg-card p-8">
           <div className="space-y-2 text-center mb-8">
             <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
