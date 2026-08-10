@@ -10,21 +10,25 @@ export async function sendTaskNotification(params: {
   workspaceId?: string;
   recipientUserIds: string[];
 }) {
-  const users = await User.find({ _id: { $in: params.recipientUserIds } });
-  const emails = Array.from(
-    new Set(users.map((u: any) => String(u.email).toLowerCase()).filter(Boolean))
-  );
-  if (!emails.length) return;
+  try {
+    const users = await User.find({ _id: { $in: params.recipientUserIds } });
+    const emails = Array.from(
+      new Set(users.map((u: any) => String(u.email).toLowerCase()).filter(Boolean))
+    );
+    if (!emails.length) return;
 
-  const actor = params.actorName ? ` by ${params.actorName}` : "";
-  const subject = `Task ${params.action}: ${params.taskTitle}`;
-  const html = `
-    <p><b>${params.taskTitle}</b> was ${params.action}${actor}.</p>
-    <p>Task ID: ${params.taskId}</p>
-    ${params.projectId ? `<p>Project ID: ${params.projectId}</p>` : ""}
-    ${params.workspaceId ? `<p>Workspace ID: ${params.workspaceId}</p>` : ""}
-  `;
+    const actor = params.actorName ? ` by ${params.actorName}` : "";
+    const subject = `Task ${params.action}: ${params.taskTitle}`;
+    const html = `
+      <p><b>${params.taskTitle}</b> was ${params.action}${actor}.</p>
+      <p>Task ID: ${params.taskId}</p>
+      ${params.projectId ? `<p>Project ID: ${params.projectId}</p>` : ""}
+      ${params.workspaceId ? `<p>Workspace ID: ${params.workspaceId}</p>` : ""}
+    `;
 
-  await sendEmail({ to: emails, subject, html });
+    await sendEmail({ to: emails, subject, html });
+  } catch (error) {
+    console.error("Task notification error:", error);
+  }
 }
 

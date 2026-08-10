@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     const actor = await User.findById(me.userId);
     const recipients = Array.from(new Set([me.userId, ...assigneeIds]));
-    await sendTaskNotification({
+    sendTaskNotification({
       action: "created",
       actorName: actor?.name,
       taskTitle: task.title,
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       projectId: task.projectId,
       workspaceId,
       recipientUserIds: recipients,
-    });
+    }).catch((err) => console.error("Notification failed:", err));
 
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {
@@ -122,7 +122,7 @@ export async function PATCH(request: Request) {
       new Set([String(task?.createdById || before.createdById || ""), ...assigneeIds].filter(Boolean))
     );
     const actor = await User.findById(me.userId);
-    await sendTaskNotification({
+    sendTaskNotification({
       action: "updated",
       actorName: actor?.name,
       taskTitle: task?.title || before.title,
@@ -130,7 +130,7 @@ export async function PATCH(request: Request) {
       projectId: task?.projectId || before.projectId,
       workspaceId: task?.workspaceId || before.workspaceId,
       recipientUserIds: recipients,
-    });
+    }).catch((err) => console.error("Notification failed:", err));
 
     return NextResponse.json({ task }, { status: 200 });
   } catch (error) {
@@ -162,7 +162,7 @@ export async function DELETE(request: Request) {
       new Set([String(before.createdById || ""), ...assigneeIds].filter(Boolean))
     );
     const actor = await User.findById(me.userId);
-    await sendTaskNotification({
+    sendTaskNotification({
       action: "deleted",
       actorName: actor?.name,
       taskTitle: before.title,
@@ -170,7 +170,7 @@ export async function DELETE(request: Request) {
       projectId: before.projectId,
       workspaceId: before.workspaceId,
       recipientUserIds: recipients,
-    });
+    }).catch((err) => console.error("Notification failed:", err));
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

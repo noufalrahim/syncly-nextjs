@@ -3,19 +3,64 @@ import { cn } from "@/core/utils"
 type SynclyLogoProps = {
   className?: string
   size?: number
+  showText?: boolean
+  textClassName?: string
 }
 
-/** Brand mark used on auth screens and empty states. */
-export function SynclyLogo({ className, size = 40 }: SynclyLogoProps) {
+export function SynclyLogo({ className, size = 40, showText = false, textClassName }: SynclyLogoProps) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/icons/syncly-mark.svg"
-      alt="Syncly"
-      width={size}
-      height={size}
-      className={cn("rounded-[22%] shadow-sm", className)}
-      draggable={false}
-    />
+    <div className={cn("inline-flex items-center gap-3 select-none", className)}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="shrink-0 drop-shadow-md transition-transform hover:scale-105 duration-300"
+      >
+        <defs>
+          <linearGradient id="synclyGradientPrimary" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--primary, #f97316)" />
+            <stop offset="100%" stopColor="#ea580c" />
+          </linearGradient>
+          <linearGradient id="synclyGradientSecondary" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="var(--primary, #f97316)" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#fb923c" stopOpacity="0.4" />
+          </linearGradient>
+          <radialGradient id="synclyGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="var(--primary, #f97316)" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="var(--primary, #f97316)" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        <rect width="100" height="100" rx="26" fill="url(#synclyGlow)" />
+        <rect x="2" y="2" width="96" height="96" rx="24" fill="currentColor" className="text-card/90" />
+        <rect x="2" y="2" width="96" height="96" rx="24" stroke="currentColor" strokeWidth="1.5" className="text-border/60" />
+
+        <path
+          d="M32 38C32 29.1634 39.1634 22 48 22H54C62.8366 22 70 29.1634 70 38C70 46.8366 62.8366 54 54 54H42"
+          stroke="url(#synclyGradientPrimary)"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M68 62C68 70.8366 60.8366 78 52 78H46C37.1634 78 30 70.8366 30 62C30 53.1634 37.1634 46 46 46H58"
+          stroke="url(#synclyGradientSecondary)"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+
+        <circle cx="50" cy="50" r="7" fill="url(#synclyGradientPrimary)" />
+        <circle cx="50" cy="50" r="3" fill="#ffffff" />
+        <circle cx="68" cy="38" r="4" fill="var(--primary, #f97316)" />
+        <circle cx="32" cy="62" r="4" fill="var(--primary, #f97316)" />
+      </svg>
+      {showText && (
+        <span className={cn("font-bold tracking-tight text-foreground font-sans", textClassName)}>
+          Syncly
+        </span>
+      )}
+    </div>
   )
 }

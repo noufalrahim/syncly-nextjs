@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
 import { cn } from "@/core/utils"
+import { SynclyLogo } from "./syncly-logo"
 import { ProjectSettingsDialog } from "./project-settings-dialog"
 import { WorkspaceSettingsDialog } from "./workspace-settings-dialog"
 import {
@@ -105,9 +106,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 type="button"
                 className="w-full flex items-center gap-2 px-3 py-3 m-2 mr-1 rounded-md hover:bg-sidebar-accent transition-colors text-left group min-w-0"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold text-sm shrink-0">
-                  {activeWorkspace?.name?.[0] || "S"}
-                </span>
+                <SynclyLogo size={28} />
                 <span className="flex-1 min-w-0">
                   {loading.workspaces ? (
                     <>

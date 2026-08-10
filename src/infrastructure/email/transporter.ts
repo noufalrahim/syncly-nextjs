@@ -3,14 +3,12 @@ import nodemailer from "nodemailer";
 let cached: any | null = null;
 
 export function getMailTransport() {
-  if (cached) return cached;
-
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
 
-  if (!smtpUser || !smtpPass) {
-    throw new Error("Missing SMTP credentials: set SMTP_USER and SMTP_PASS");
-  }
+  if (!smtpUser || !smtpPass) return null;
+
+  if (cached) return cached;
 
   cached = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -27,8 +25,17 @@ export async function sendEmail(params: {
   subject: string;
   html: string;
 }) {
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  if (!from) throw new Error("Missing SMTP_FROM/SMTP_USER");
-  const transport = getMailTransport();
-  await transport.sendMail({ from, ...params });
+  try {
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+    if (!from) return;
+    const transport = getMailTransport();
+    if (!transport) return;
+    await transport.sendMail({ from, ...params });
+  } catch (error: any) {
+    if (error?.code === "EAUTH" || error?.responseCode === 535) {
+      console.warn("Email notification skipped: Invalid SMTP credentials (535 Bad Credentials)");
+    } else {
+      console.error("Email send failed:", error?.message || error);
+    }
+  }
 }

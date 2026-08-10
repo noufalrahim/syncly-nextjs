@@ -52,10 +52,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-background" suppressHydrationWarning>
       <body className="font-sans antialiased text-foreground overscroll-none">
-        {/* Apply the saved accent color before first paint to avoid a flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var a=localStorage.getItem("syncly-accent");if(a&&a!=="orange")document.documentElement.setAttribute("data-accent",a)}catch(e){}`,
+            __html: `try{var a=localStorage.getItem("syncly-accent");if(a){if(a.indexOf("#")===0){document.documentElement.setAttribute("data-accent","custom");document.documentElement.style.setProperty("--primary",a);document.documentElement.style.setProperty("--ring",a);document.documentElement.style.setProperty("--sidebar-primary",a);document.documentElement.style.setProperty("--sidebar-ring",a);document.documentElement.style.setProperty("--chart-1",a);}else if(a!=="orange"){document.documentElement.setAttribute("data-accent",a)}}}catch(e){}`,
           }}
         />
         <Providers>{children}</Providers>
