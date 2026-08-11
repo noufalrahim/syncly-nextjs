@@ -5,7 +5,7 @@ export type TaskStatus =
   | "in-progress"
   | "done"
 
-export type TaskPriority = "low" | "medium" | "high"
+export type TaskPriority = "low" | "medium" | "high" | "urgent"
 
 export type User = {
   id: string
@@ -230,5 +230,10 @@ export const PRIORITY_META: Record<
     label: "High",
     badge: "bg-red-500/10 text-red-400 border-red-500/20",
     bars: 3,
+  },
+  urgent: {
+    label: "Urgent",
+    badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    bars: 4,
   },
 }

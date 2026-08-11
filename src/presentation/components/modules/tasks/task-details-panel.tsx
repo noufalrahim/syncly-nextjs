@@ -16,7 +16,7 @@ import {
   Paperclip,
   Plus,
   Send,
-  Tag,
+  Tag as TagIcon,
   Trash2,
   Underline,
   Upload,
@@ -44,7 +44,7 @@ const STATUSES: TaskStatus[] = [
   "done",
   "cancelled",
 ]
-const PRIORITIES: TaskPriority[] = ["low", "medium", "high"]
+const PRIORITIES: TaskPriority[] = ["low", "medium", "high", "urgent"]
 
 function formatRelative(iso: string) {
   const d = new Date(iso)
@@ -166,7 +166,7 @@ function PanelBody({ task }: { task: Task }) {
     }
     if (localPriority !== task.priority) {
       patch.priority = localPriority
-      newHistory.push({ type: "priority", message: `set priority to ${PRIORITY_META[localPriority as TaskPriority].label}`, authorId, createdAt: now })
+      newHistory.push({ type: "priority", message: `set priority to ${(PRIORITY_META[localPriority as TaskPriority] || PRIORITY_META.medium).label}`, authorId, createdAt: now })
     }
     if (localDueDate !== task.dueDate) {
       patch.dueDate = localDueDate
@@ -351,7 +351,7 @@ function PanelBody({ task }: { task: Task }) {
               onChange={(v) => setLocalPriority(v as TaskPriority)}
               options={PRIORITIES.map((p) => ({
                 value: p,
-                label: PRIORITY_META[p].label,
+                label: (PRIORITY_META[p] || PRIORITY_META.medium).label,
               }))}
             />
 
@@ -367,7 +367,7 @@ function PanelBody({ task }: { task: Task }) {
               className="bg-muted/40 border border-border focus:border-ring rounded px-2 py-1 text-sm outline-none w-fit cursor-pointer"
             />
 
-            <PropLabel icon={<Tag className="h-3.5 w-3.5" />}>Tags</PropLabel>
+            <PropLabel icon={<TagIcon className="h-3.5 w-3.5" />}>Tags</PropLabel>
             <TagPicker
               selected={localTags}
               onToggle={toggleTag}

@@ -142,7 +142,7 @@ export function MyTasksModule() {
                       ) : (
                         items.map((t) => {
                           const proj = getProject(t.projectId)
-                          const priority = PRIORITY_META[t.priority]
+                          const priority = PRIORITY_META[t.priority] || PRIORITY_META.medium
                           const status = STATUS_META[t.status]
                           const overdue = isOverdue(t)
                           return (

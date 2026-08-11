@@ -57,7 +57,7 @@ export function TaskCard({
     transition,
   }
 
-  const priority = PRIORITY_META[task.priority]
+  const priority = PRIORITY_META[task.priority] || PRIORITY_META.medium
 
   const columnColor = column?.color || "gray"
   const columnHex = getHexColor(columnColor)

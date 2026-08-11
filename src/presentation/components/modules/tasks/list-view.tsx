@@ -69,7 +69,7 @@ export function ListView() {
                   <ul className="border-t border-border">
                     {items.map((t) => {
                       const assignee = users.find((u) => u.id === t.assigneeId)
-                      const priority = PRIORITY_META[t.priority]
+                      const priority = PRIORITY_META[t.priority] || PRIORITY_META.medium
                       return (
                         <li
                           key={t.id}

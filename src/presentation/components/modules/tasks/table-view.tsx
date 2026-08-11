@@ -3,7 +3,7 @@
 import { cn } from "@/core/utils"
 import { toast } from "sonner"
 import { labelDotClass, getHexColor } from "@/domain/label-colors"
-import { PRIORITY_META, STATUS_META } from "@/domain/types"
+import { PRIORITY_META, STATUS_META, type TaskPriority } from "@/domain/types"
 import { useDispatch, useProjectTasks, useProjectColumns, useWorkspace } from "@/presentation/state/workspace-store"
 import { UserAvatar } from "@/presentation/components/user-avatar"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
@@ -112,7 +112,7 @@ export function TableView() {
 
   const renderCell = (t: any, columnId: string) => {
     const status = projectColumns.find(c => c.id === t.columnId)
-    const priority = PRIORITY_META[t.priority]
+    const priority = PRIORITY_META[t.priority as TaskPriority] || PRIORITY_META.medium
     const assignee = users.find((u) => u.id === t.assigneeId)
     const project = projects.find((p) => p.id === t.projectId)
     const taskTags = tags.filter((l) => t.labels.includes(l.id))
