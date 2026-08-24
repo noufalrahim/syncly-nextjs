@@ -5,12 +5,16 @@ import { SettingsNav } from "@/presentation/components/settings/settings-nav"
 import { LeftSidebar } from "@/presentation/components/left-sidebar"
 import { TopHeader } from "@/presentation/components/top-header"
 import { MobileBottomNav } from "@/presentation/components/mobile-bottom-nav"
+import { LoadingOverlay } from "@/presentation/components/ui/loading-overlay"
+import { useWorkspace } from "@/presentation/state/workspace-store"
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false)
+  const { loading } = useWorkspace()
+  const isContentLoading = loading.workspaces || loading.projects || loading.tasks
 
   return (
-    <div className="flex h-screen w-full max-w-[100vw] bg-background text-foreground overflow-hidden">
+    <div className="relative flex h-screen w-full max-w-[100vw] bg-background text-foreground overflow-hidden">
       <LeftSidebar
         mobileOpen={mobileNavOpen}
         onMobileOpenChange={setMobileNavOpen}
@@ -34,6 +38,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       </main>
 
       <MobileBottomNav onOpenProjects={() => setMobileNavOpen(true)} />
+
+      <LoadingOverlay visible={isContentLoading} />
     </div>
   )
 }

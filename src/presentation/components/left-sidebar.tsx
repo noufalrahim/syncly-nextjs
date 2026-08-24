@@ -11,6 +11,9 @@ import {
   Settings,
   CheckSquare,
   MoreHorizontal,
+  Check,
+  LogOut,
+  Layers,
 } from "lucide-react"
 import { Skeleton } from "@/presentation/components/ui/skeleton"
 import { cn } from "@/core/utils"
@@ -45,7 +48,7 @@ type LeftSidebarProps = {
 export function LeftSidebar({ mobileOpen, onMobileOpenChange }: LeftSidebarProps) {
   return (
     <>
-      <aside className="hidden md:flex w-60 shrink-0 flex-col bg-sidebar border-r border-sidebar-border">
+      <aside className="hidden md:flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <SidebarBody />
       </aside>
 
@@ -97,80 +100,80 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between pr-2">
-        <div className="flex-1 min-w-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="w-full flex items-center gap-2 px-3 py-3 m-2 mr-1 rounded-md hover:bg-sidebar-accent transition-colors text-left group min-w-0"
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="p-3 pb-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            >
+              <SynclyLogo size={28} className="shrink-0 [&_svg]:hover:scale-100" />
+              <span className="flex-1 min-w-0">
+                {loading.workspaces ? (
+                  <>
+                    <Skeleton className="h-4 w-28 mb-1" />
+                    <Skeleton className="h-3 w-16" />
+                  </>
+                ) : (
+                  <>
+                    <span className="block text-[13px] font-semibold tracking-tight truncate">
+                      {activeWorkspace?.name || "No workspace"}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground truncate">
+                      {activeWorkspace?.plan || "Personal"} plan
+                    </span>
+                  </>
+                )}
+              </span>
+              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-60">
+            <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {workspaces.map((ws) => (
+              <DropdownMenuItem
+                key={ws.id}
+                onClick={() =>
+                  go(() =>
+                    dispatch({ type: "SELECT_WORKSPACE", workspaceId: ws.id }),
+                  )
+                }
+                className="cursor-pointer"
               >
-                <SynclyLogo size={28} />
-                <span className="flex-1 min-w-0">
-                  {loading.workspaces ? (
-                    <>
-                      <Skeleton className="h-4 w-24 mb-1" />
-                      <Skeleton className="h-3 w-16" />
-                    </>
-                  ) : (
-                    <>
-                      <span className="block text-sm font-semibold truncate group-hover:text-sidebar-accent-foreground">
-                        {activeWorkspace?.name || "No Workspace"}
-                      </span>
-                      <span className="block text-[11px] text-muted-foreground truncate uppercase tracking-tight">
-                        {activeWorkspace?.plan || "Personal"} Plan
-                      </span>
-                    </>
-                  )}
-                </span>
-                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 ml-2">
-              <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {workspaces.map((ws) => (
-                <DropdownMenuItem
-                  key={ws.id}
-                  onClick={() =>
-                    go(() =>
-                      dispatch({ type: "SELECT_WORKSPACE", workspaceId: ws.id }),
-                    )
-                  }
-                  className="cursor-pointer"
-                >
-                  {ws.name}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
+                <span className="flex-1 truncate">{ws.name}</span>
+                {ws.id === activeWorkspaceId && (
+                  <Check className="h-4 w-4 text-primary" />
+                )}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            {activeWorkspace && (
               <DropdownMenuItem
                 className="cursor-pointer"
-                onClick={() => setAddWorkspaceOpen(true)}
+                onClick={() => setWorkspaceSettingsOpen(true)}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                <span>Add Workspace</span>
+                <Settings className="h-4 w-4" />
+                <span>Workspace settings</span>
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        {activeWorkspace && (
-          <button
-            type="button"
-            onClick={() => setWorkspaceSettingsOpen(true)}
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors shrink-0"
-            title="Workspace settings"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-        )}
+            )}
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => setAddWorkspaceOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add workspace</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      <div className="px-2 pb-2">
+      <div className="px-3 pb-3">
         <SidebarSearch />
       </div>
 
-      <nav className="px-2 space-y-0.5" aria-label="Primary">
+      <nav className="px-2.5 space-y-0.5" aria-label="Primary">
         <SidebarItem
           icon={<Home className="h-4 w-4" />}
           label="Home"
@@ -192,14 +195,6 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => go(() => dispatch({ type: "SET_MODULE", module: "inbox" }))}
         />
         <SidebarItem
-          icon={<Search className="h-4 w-4" />}
-          label="Search"
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("toggle-spotlight-search"))
-            onNavigate?.()
-          }}
-        />
-        <SidebarItem
           icon={<Settings className="h-4 w-4" />}
           label="Settings"
           active={module === "settings"}
@@ -210,15 +205,17 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         />
       </nav>
 
-      <div className="mt-5 px-3 flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-wider font-medium text-muted-foreground">
+      <div className="mx-3 mt-4 mb-2 h-px bg-sidebar-border" />
+
+      <div className="px-4 mb-1.5 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
           Projects
         </span>
         <button
           type="button"
           onClick={() => setAddProjectOpen(true)}
           disabled={!activeWorkspaceId}
-          className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-sidebar-accent text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="Add project"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -226,28 +223,28 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav
-        className="px-2 mt-1 space-y-0.5 overflow-y-auto flex-1"
+        className="px-2.5 space-y-0.5 overflow-y-auto flex-1 min-h-0 pb-2"
         aria-label="Projects"
       >
         {!activeWorkspaceId ? (
-          <div className="px-3 py-4 text-center">
+          <div className="mx-1 mt-1 rounded-lg border border-dashed border-sidebar-border px-3 py-4 text-center">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Select or Add workspace to view projects
+              Select or add a workspace to view projects
             </p>
             <Button
               variant="outline"
               size="sm"
-              className="mt-2 h-7 text-[10px] w-full"
+              className="mt-3 h-7 text-xs w-full"
               onClick={() => setAddWorkspaceOpen(true)}
             >
-              Add Workspace
+              Add workspace
             </Button>
           </div>
         ) : loading.projects ? (
-          <div className="space-y-1.5 px-2 mt-1">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+          <div className="space-y-1.5 px-1 mt-1">
+            <Skeleton className="h-8 w-full rounded-md" />
+            <Skeleton className="h-8 w-full rounded-md" />
+            <Skeleton className="h-8 w-full rounded-md" />
           </div>
         ) : (
           <>
@@ -262,13 +259,13 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 })
               }
               className={cn(
-                "w-full flex items-center gap-2 px-2 py-2.5 md:py-1.5 rounded-md text-sm transition-colors",
-                activeProjectId === null
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                "w-full flex items-center gap-2.5 h-8 px-2 rounded-md text-[13px] transition-colors",
+                activeProjectId === null && !["home", "my-tasks", "inbox", "settings"].includes(module)
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
               )}
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+              <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate">All projects</span>
             </button>
             {projects.map((p) => {
@@ -277,10 +274,10 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 <div
                   key={p.id}
                   className={cn(
-                    "group w-full flex items-center justify-between px-2 py-2.5 md:py-1.5 rounded-md text-sm transition-colors cursor-pointer",
+                    "group w-full flex items-center gap-1 h-8 pl-2 pr-1 rounded-md text-[13px] transition-colors cursor-pointer",
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
                   )}
                   onClick={() =>
                     go(() => {
@@ -291,9 +288,9 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                     })
                   }
                 >
-                  <div className="flex items-center gap-2 overflow-hidden flex-1">
+                  <div className="flex items-center gap-2.5 overflow-hidden flex-1 min-w-0">
                     <span
-                      className="text-base leading-none w-4 text-center shrink-0"
+                      className="flex h-5 w-5 items-center justify-center rounded text-[13px] leading-none shrink-0 bg-sidebar-accent/80"
                       aria-hidden
                     >
                       {p.emoji}
@@ -303,8 +300,10 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
-                        className="h-8 w-8 md:h-5 md:w-5 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity outline-none"
+                        type="button"
+                        className="h-6 w-6 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 transition-opacity outline-none"
                         onClick={(e) => e.stopPropagation()}
+                        aria-label={`${p.name} options`}
                       >
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </button>
@@ -316,8 +315,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                           setSettingsProjectId(p.id)
                         }}
                       >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Project Settings
+                        <Settings className="h-4 w-4" />
+                        Project settings
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -325,7 +324,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               )
             })}
             {projects.length === 0 && (
-              <p className="px-3 py-2 text-[11px] text-muted-foreground italic">
+              <p className="px-2 py-2 text-xs text-muted-foreground">
                 No projects yet
               </p>
             )}
@@ -333,24 +332,27 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </nav>
 
-      <div className="border-t border-sidebar-border p-2">
+      <div className="mt-auto border-t border-sidebar-border p-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <div className="flex items-center gap-2 px-2 py-2 md:py-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer group">
+            <button
+              type="button"
+              className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            >
               <UserAvatar user={me} size="md" />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate group-hover:text-sidebar-accent-foreground">
+                <div className="text-[13px] font-medium truncate">
                   {me?.name || "Guest User"}
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
                   {meEmail || "guest@syncly.com"}
                 </div>
               </div>
-              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
+              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="w-56 mb-2">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuContent align="end" side="top" className="w-56 mb-1">
+            <DropdownMenuLabel>My account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer"
@@ -358,22 +360,23 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 go(() => dispatch({ type: "SET_MODULE", module: "settings" }))
               }
             >
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Account Settings</span>
+              <Settings className="h-4 w-4" />
+              <span>Account settings</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer"
               onClick={() => setAddWorkspaceOpen(true)}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              <span>Add Workspace</span>
+              <Plus className="h-4 w-4" />
+              <span>Add workspace</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="cursor-pointer text-destructive focus:text-destructive"
+              variant="destructive"
+              className="cursor-pointer"
               onClick={handleLogout}
             >
-              <Settings className="mr-2 h-4 w-4" />
+              <LogOut className="h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -394,7 +397,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         open={workspaceSettingsOpen}
         onOpenChange={setWorkspaceSettingsOpen}
       />
-    </>
+    </div>
   )
 }
 
@@ -419,14 +422,16 @@ function SidebarItem({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-2.5 md:py-1.5 rounded-md text-sm transition-colors",
+        "w-full flex items-center gap-2.5 h-8 px-2 rounded-md text-[13px] transition-colors",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
         disabled && "opacity-50 cursor-not-allowed",
       )}
     >
-      <span className="text-muted-foreground">{icon}</span>
+      <span className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground")}>
+        {icon}
+      </span>
       <span className="flex-1 text-left truncate">{label}</span>
       {badge && (
         <span className="text-[10px] font-medium text-muted-foreground bg-sidebar-accent px-1.5 py-0.5 rounded">
@@ -442,17 +447,16 @@ function SidebarSearch() {
     window.dispatchEvent(new CustomEvent("toggle-spotlight-search"))
   }
   return (
-    <div className="relative cursor-pointer" onClick={handleClick}>
-      <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-      <input
-        type="search"
-        placeholder="Search…"
-        readOnly
-        className="w-full bg-sidebar-accent/50 border border-transparent focus:border-ring focus:bg-sidebar-accent text-sm rounded-md pl-8 pr-2 py-2 md:py-1.5 outline-none placeholder:text-muted-foreground transition-colors cursor-pointer"
-      />
-      <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-sidebar px-1 rounded border border-sidebar-border pointer-events-none">
+    <button
+      type="button"
+      onClick={handleClick}
+      className="relative flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-2.5 h-8 text-[13px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+    >
+      <Search className="h-3.5 w-3.5 shrink-0" />
+      <span className="flex-1 text-left truncate">Search</span>
+      <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-sidebar-border bg-sidebar px-1.5 font-sans text-[10px] font-medium text-muted-foreground">
         ⌘K
       </kbd>
-    </div>
+    </button>
   )
 }

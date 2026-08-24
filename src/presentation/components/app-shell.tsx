@@ -20,14 +20,16 @@ import { MyTasksModule } from "./modules/my-tasks-module"
 import { InboxModule } from "./modules/inbox-module"
 import { SettingsModule } from "./modules/settings-module"
 import { SpotlightSearch } from "./spotlight-search"
+import { LoadingOverlay } from "./ui/loading-overlay"
 
 export function AppShell() {
-  const { module, selectedTaskId } = useWorkspace()
+  const { module, selectedTaskId, loading } = useWorkspace()
   const isGlobalModule = ["home", "my-tasks", "inbox", "settings"].includes(module)
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false)
+  const isContentLoading = loading.workspaces || loading.projects || loading.tasks
 
   return (
-    <div className="flex h-screen w-full max-w-[100vw] bg-background text-foreground overflow-hidden">
+    <div className="relative flex h-screen w-full max-w-[100vw] bg-background text-foreground overflow-hidden">
       <LeftSidebar
         mobileOpen={mobileNavOpen}
         onMobileOpenChange={setMobileNavOpen}
@@ -63,6 +65,8 @@ export function AppShell() {
           window.dispatchEvent(new CustomEvent("toggle-spotlight-search"))
         }
       />
+
+      <LoadingOverlay visible={isContentLoading} />
 
       {selectedTaskId && <TaskDetailsPanel />}
       <SpotlightSearch />

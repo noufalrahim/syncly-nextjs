@@ -5,7 +5,6 @@ import { ArrowRight, CheckCircle2, CircleDashed, FolderOpen } from "lucide-react
 import { useWorkspace, useDispatch } from "@/presentation/state/workspace-store"
 import { cn } from "@/core/utils"
 import { getHexColor } from "@/domain/label-colors"
-import { Spinner } from "@/presentation/components/ui/spinner"
 import { AvatarStack } from "@/presentation/components/user-avatar"
 import type { User } from "@/domain/types"
 
@@ -44,14 +43,6 @@ export function AllProjectsView() {
     })
   }, [projects, tasks, users])
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-background/50">
-        <Spinner className="size-8 text-muted-foreground" />
-      </div>
-    )
-  }
-
   return (
     <div className="flex-1 overflow-y-auto bg-background/50">
       <div className="w-full mx-auto p-8">
@@ -62,7 +53,7 @@ export function AllProjectsView() {
           </p>
         </header>
 
-        {projects.length === 0 ? (
+        {projects.length === 0 && !isLoading ? (
           <div className="flex min-h-[min(60vh,420px)] flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 text-center">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
               <FolderOpen className="h-5 w-5 text-muted-foreground" />
